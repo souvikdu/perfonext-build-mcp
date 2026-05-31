@@ -1,0 +1,35 @@
+{
+  "polyfillFiles": [],
+  "devFiles": [],
+  "ampDevFiles": [],
+  "lowPriorityFiles": [],
+  "rootMainFiles": [
+    "static/chunks/framework.js",
+    "static/chunks/main.js"
+  ],
+  "pages": {
+    "/_app": [
+      "static/chunks/framework.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/_app.js"
+    ],
+    "/": [
+      "static/chunks/framework.js",
+      "static/chunks/main.js",
+      "static/chunks/home.js",
+      "static/chunks/shared-search.js"
+    ],
+    "/dashboard": [
+      "static/chunks/framework.js",
+      "static/chunks/main.js",
+      "static/chunks/dashboard.js",
+      "static/chunks/shared-search.js"
+    ],
+    "/blog/[slug]": [
+      "static/chunks/framework.js",
+      "static/chunks/main.js",
+      "static/chunks/blog.js",
+      "static/chunks/shared-search.js"
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "version": 4,
+  "routes": {
+    "/": {
+      "initialRevalidateSeconds": false,
+      "srcRoute": null,
+      "dataRoute": "/_next/data/build-id/index.json"
+    },
+    "/dashboard": {
+      "initialRevalidateSeconds": 60,
+      "srcRoute": null,
+      "dataRoute": "/_next/data/build-id/dashboard.json"
+    },
+    "/search": {
+      "initialRevalidateSeconds": false,
+      "srcRoute": null,
+      "dataRoute": "/_next/data/build-id/search.json"
+    }
+  },
+  "dynamicRoutes": {
+    "/blog/[slug]": {
+      "routeRegex": "^/blog/([^/]+?)(?:/)?$",
+      "dataRoute": "/_next/data/build-id/blog/[slug].json",
+      "fallback": null,
+      "dataRouteRegex": "^/_next/data/build-id/blog/([^/]+?)\\.json$"
+    }
+  },
+  "preview": {}
+}

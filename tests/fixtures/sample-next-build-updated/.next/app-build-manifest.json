@@ -1,0 +1,10 @@
+{
+  "pages": {
+    "/search": [
+      "static/chunks/framework.js",
+      "static/chunks/main.js",
+      "static/chunks/search.js",
+      "static/chunks/shared-search.js"
+    ]
+  }
+}
