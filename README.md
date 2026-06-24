@@ -9,6 +9,9 @@
 - loads Next.js build artifacts from a `.next` directory
 - ranks the largest user-facing routes by emitted bundle footprint
 - identifies the heaviest shared chunks that affect multiple routes
+- compares two builds and explains which routes and chunks drove bundle growth, with
+  severity-ranked, evidence-backed fix suggestions
+- matches chunks across builds even though Next.js fingerprints filenames with content hashes
 - keeps loaded build snapshots in memory so an MCP client can inspect them without re-reading the same build
 
 ## Inputs
@@ -28,8 +31,11 @@ The MVP reads build artifacts developers already have after running `next build`
 | `get_largest_routes` | Rank the heaviest user-facing routes by total emitted chunk bytes |
 | `get_shared_chunks` | Rank shared chunks by size and show which routes depend on them |
 | `compare_builds` | Compare a baseline and current build snapshot to show which routes and chunks grew or shrank |
+| `explain_growth` | Severity-rank which routes and chunks drove bundle growth between two builds, with evidence-backed fix suggestions |
 
 The output stays machine-readable and includes raw byte counts so Copilot can explain regressions, prioritise fixes, and suggest concrete dependency or import-level follow-up.
+
+Because Next.js content-hashes emitted filenames (`framework-<hash>.js`, and CSS files named purely by hash), `compare_builds` and `explain_growth` match chunks across builds by a hash-normalized identity. This prevents a rehashed-but-unchanged chunk from being misreported as removed-and-recreated, while still flagging genuinely new chunks.
 
 ## Install
 
@@ -70,6 +76,7 @@ Add this server to VS Code settings:
 - "Which shared chunks are affecting the most routes in this build?"
 - "Summarize the build footprint and tell me which routes ship the most JavaScript."
 - "Compare my baseline and current `.next` builds and show me which routes or shared chunks grew the most."
+- "Explain what grew between my baseline and current `.next` builds and what I should fix first."
 
 ## Development
 
