@@ -148,3 +148,53 @@ export interface GrowthExplanation {
   topGrowingChunks: ChunkGrowthContribution[];
   suggestions: GrowthSuggestion[];
 }
+
+// --- Webpack module stats (.next/stats.json) -------------------------------
+
+export interface WebpackModuleReason {
+  moduleName: string | null;
+  userRequest: string | null;
+}
+
+export interface WebpackModule {
+  name: string;
+  packageName: string | null;
+  sizeBytes: number;
+  chunkIds: Array<string | number>;
+  reasons: WebpackModuleReason[];
+}
+
+export interface WebpackChunk {
+  id: string | number;
+  names: string[];
+  files: string[];
+  sizeBytes: number;
+}
+
+export interface ParsedWebpackStats {
+  buildId: string;
+  statsPath: string;
+  modules: WebpackModule[];
+  chunks: WebpackChunk[];
+  moduleCount: number;
+  parsedModuleCount: number;
+}
+
+export interface ImportChainNode {
+  moduleName: string;
+  packageName: string | null;
+}
+
+export interface ImportTrace {
+  moduleName: string;
+  packageName: string | null;
+  sizeBytes: number;
+  chunkFiles: string[];
+  importChain: ImportChainNode[];
+}
+
+export interface TraceImportResult {
+  query: string;
+  matchCount: number;
+  traces: ImportTrace[];
+}
