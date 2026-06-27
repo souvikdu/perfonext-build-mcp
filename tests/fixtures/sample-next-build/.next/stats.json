@@ -1,0 +1,79 @@
+{
+  "chunks": [
+    { "id": 0, "names": ["framework"], "files": ["static/chunks/framework.js"], "size": 128000 },
+    { "id": 1, "names": ["main"], "files": ["static/chunks/main.js"], "size": 24000 },
+    { "id": 2, "names": ["home"], "files": ["static/chunks/home.js"], "size": 76000 },
+    { "id": 3, "names": ["dashboard"], "files": ["static/chunks/dashboard.js"], "size": 78000 },
+    { "id": 4, "names": ["blog"], "files": ["static/chunks/blog.js"], "size": 12000 },
+    { "id": 5, "names": ["shared-search"], "files": ["static/chunks/shared-search.js"], "size": 60000 }
+  ],
+  "modules": [
+    {
+      "name": "./node_modules/react/index.js",
+      "size": 8000,
+      "chunks": [0],
+      "reasons": []
+    },
+    {
+      "name": "./node_modules/react-dom/cjs/react-dom.production.min.js",
+      "size": 120000,
+      "chunks": [0],
+      "reasons": [
+        { "moduleName": "./node_modules/react/index.js", "userRequest": "react-dom" }
+      ]
+    },
+    {
+      "name": "./src/pages/home.js",
+      "size": 6000,
+      "chunks": [2],
+      "reasons": []
+    },
+    {
+      "name": "./node_modules/lodash/lodash.js",
+      "size": 70000,
+      "chunks": [2, 3],
+      "reasons": [
+        { "moduleName": "./src/pages/home.js", "userRequest": "lodash" },
+        { "moduleName": "./src/pages/dashboard.js", "userRequest": "lodash" }
+      ]
+    },
+    {
+      "name": "./src/pages/dashboard.js",
+      "size": 6500,
+      "chunks": [3],
+      "reasons": []
+    },
+    {
+      "name": "./src/components/Search.js",
+      "size": 5000,
+      "chunks": [5],
+      "reasons": [
+        { "moduleName": "./src/pages/home.js", "userRequest": "./components/Search" }
+      ]
+    },
+    {
+      "name": "./node_modules/date-fns/index.js",
+      "size": 30000,
+      "chunks": [5],
+      "reasons": [
+        { "moduleName": "./src/components/Search.js", "userRequest": "date-fns" }
+      ]
+    },
+    {
+      "name": "./node_modules/@acme/ui/index.js",
+      "size": 22000,
+      "chunks": [5],
+      "reasons": [
+        { "moduleName": "./src/components/Search.js", "userRequest": "@acme/ui" }
+      ]
+    },
+    {
+      "name": "./node_modules/outer/node_modules/inner/index.js",
+      "size": 4000,
+      "chunks": [4],
+      "reasons": [
+        { "moduleName": "./src/pages/blog.js", "userRequest": "inner" }
+      ]
+    }
+  ]
+}
