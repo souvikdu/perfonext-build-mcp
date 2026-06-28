@@ -198,3 +198,64 @@ export interface TraceImportResult {
   matchCount: number;
   traces: ImportTrace[];
 }
+
+// --- Attribution & costs (v0.4.0) ------------------------------------------
+
+export interface DuplicatePackageEntry {
+  packageName: string;
+  wastedBytes: number;
+  totalBytes: number;
+  chunkCount: number;
+  chunkFiles: string[];
+}
+
+export interface SharedChunkPackage {
+  packageName: string;
+  bytes: number;
+  shareOfChunk: number;
+}
+
+export interface SharedChunkComposition {
+  chunkPath: string;
+  sizeBytes: number;
+  routeCount: number;
+  sharedByRoutes: string[];
+  topPackages: SharedChunkPackage[];
+}
+
+export interface PackageCostEntry {
+  packageName: string;
+  totalBytes: number;
+  moduleCount: number;
+  chunkCount: number;
+  sharedBytes: number;
+  exclusiveBytes: number;
+  routeCount: number;
+}
+
+export type OptimizationKind =
+  | 'dedupe-package'
+  | 'move-out-of-shared-chunk'
+  | 'optimize-package-imports'
+  | 'code-split-route'
+  | 'audit-shared-baseline';
+
+export interface OptimizationSuggestion {
+  kind: OptimizationKind;
+  severity: GrowthSeverity;
+  title: string;
+  bytes: number;
+  evidence: string;
+  recommendedAction: string;
+  packageName: string | null;
+  chunkPath: string | null;
+  routePath: string | null;
+}
+
+export interface OptimizationReport {
+  buildId: string;
+  webpackStatsUsed: boolean;
+  suggestionCount: number;
+  suggestions: OptimizationSuggestion[];
+  note: string | null;
+}

@@ -2,9 +2,15 @@ import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 import type {
+  BuildChunk,
+  DuplicatePackageEntry,
   ImportChainNode,
   ImportTrace,
+  PackageCostEntry,
+  ParsedBuildStats,
   ParsedWebpackStats,
+  SharedChunkComposition,
+  SharedChunkPackage,
   TraceImportResult,
   WebpackChunk,
   WebpackModule,
@@ -283,4 +289,219 @@ export function traceImport(
     matchCount: matches.length,
     traces,
   } satisfies TraceImportResult;
+}
+
+function normalizeChunkFile(chunkPath: string): string {
+  return chunkPath.replace(/^\//, '');
+}
+
+interface DuplicateAccumulator {
+  wastedBytes: number;
+  totalBytes: number;
+  chunkIds: Set<string | number>;
+  chunkFiles: Set<string>;
+}
+
+/**
+ * Rank npm packages whose code is emitted into more than one chunk. Wasted bytes are the
+ * duplicated copies: `moduleBytes * (distinctChunkCount - 1)`, aggregated per package.
+ */
+export function findDuplicates(
+  stats: ParsedWebpackStats,
+  limit = 20,
+): DuplicatePackageEntry[] {
+  const chunkById = new Map(stats.chunks.map(chunk => [chunk.id, chunk] as const));
+  const byPackage = new Map<string, DuplicateAccumulator>();
+
+  for (const module of stats.modules) {
+    if (!module.packageName) {
+      continue;
+    }
+
+    const distinctChunkIds = Array.from(new Set(module.chunkIds));
+    const entry = byPackage.get(module.packageName) ?? {
+      wastedBytes: 0,
+      totalBytes: 0,
+      chunkIds: new Set<string | number>(),
+      chunkFiles: new Set<string>(),
+    };
+
+    entry.totalBytes += module.sizeBytes;
+    if (distinctChunkIds.length > 1) {
+      entry.wastedBytes += module.sizeBytes * (distinctChunkIds.length - 1);
+    }
+
+    for (const chunkId of distinctChunkIds) {
+      entry.chunkIds.add(chunkId);
+      for (const file of chunkById.get(chunkId)?.files ?? []) {
+        entry.chunkFiles.add(file);
+      }
+    }
+
+    byPackage.set(module.packageName, entry);
+  }
+
+  return Array.from(byPackage.entries())
+    .filter(([, entry]) => entry.wastedBytes > 0)
+    .map(([packageName, entry]) => ({
+      packageName,
+      wastedBytes: entry.wastedBytes,
+      totalBytes: entry.totalBytes,
+      // Distinct chunks, not files: one chunk can emit several files (.js + .css).
+      chunkCount: entry.chunkIds.size,
+      chunkFiles: Array.from(entry.chunkFiles).sort(),
+    } satisfies DuplicatePackageEntry))
+    .sort(
+      (left, right) =>
+        right.wastedBytes - left.wastedBytes || left.packageName.localeCompare(right.packageName),
+    )
+    .slice(0, limit);
+}
+
+/**
+ * Explain what dominates each shared chunk: join the manifest's shared chunks to the webpack
+ * module graph and rank the packages (and app code) by their byte share of the chunk.
+ */
+export function explainSharedChunks(
+  build: ParsedBuildStats,
+  stats: ParsedWebpackStats,
+  limit = 5,
+  packagesPerChunk = 5,
+): SharedChunkComposition[] {
+  const chunkByFile = new Map<string, WebpackChunk>();
+  for (const chunk of stats.chunks) {
+    for (const file of chunk.files) {
+      // Normalize on insert so the join stays symmetric with the manifest-path lookup below.
+      chunkByFile.set(normalizeChunkFile(file), chunk);
+    }
+  }
+
+  const modulesByChunkId = new Map<string | number, WebpackModule[]>();
+  for (const module of stats.modules) {
+    for (const chunkId of new Set(module.chunkIds)) {
+      const list = modulesByChunkId.get(chunkId) ?? [];
+      list.push(module);
+      modulesByChunkId.set(chunkId, list);
+    }
+  }
+
+  // build.chunks is pre-sorted by sizeBytes desc, so the first `limit` shared chunks are the largest.
+  const sharedChunks = build.chunks.filter(chunk => chunk.isShared).slice(0, limit);
+
+  return sharedChunks.map(chunk => {
+    const webpackChunk = chunkByFile.get(normalizeChunkFile(chunk.chunkPath));
+    const modules = webpackChunk ? modulesByChunkId.get(webpackChunk.id) ?? [] : [];
+
+    const bytesByPackage = new Map<string, number>();
+    let chunkModuleBytes = 0;
+    for (const module of modules) {
+      const label = module.packageName ?? '(app code)';
+      bytesByPackage.set(label, (bytesByPackage.get(label) ?? 0) + module.sizeBytes);
+      chunkModuleBytes += module.sizeBytes;
+    }
+
+    const topPackages: SharedChunkPackage[] = Array.from(bytesByPackage.entries())
+      .map(([packageName, bytes]) => ({
+        packageName,
+        bytes,
+        shareOfChunk: chunkModuleBytes === 0 ? 0 : bytes / chunkModuleBytes,
+      }))
+      .sort((left, right) => right.bytes - left.bytes || left.packageName.localeCompare(right.packageName))
+      .slice(0, packagesPerChunk);
+
+    return {
+      chunkPath: chunk.chunkPath,
+      sizeBytes: chunk.sizeBytes,
+      routeCount: chunk.routeCount,
+      sharedByRoutes: chunk.sharedByRoutes,
+      topPackages,
+    } satisfies SharedChunkComposition;
+  });
+}
+
+interface PackageCostAccumulator {
+  totalBytes: number;
+  moduleCount: number;
+  sharedBytes: number;
+  exclusiveBytes: number;
+  chunkFiles: Set<string>;
+  routes: Set<string>;
+}
+
+/**
+ * Aggregate emitted module bytes per npm package, joined to the manifest so each package reports
+ * which routes pay for it and how its bytes split between shared and route-exclusive chunks.
+ */
+export function getPackageCosts(
+  build: ParsedBuildStats,
+  stats: ParsedWebpackStats,
+  limit = 20,
+): PackageCostEntry[] {
+  const chunkById = new Map(stats.chunks.map(chunk => [chunk.id, chunk] as const));
+  const buildChunkByFile = new Map<string, BuildChunk>();
+  for (const chunk of build.chunks) {
+    buildChunkByFile.set(normalizeChunkFile(chunk.chunkPath), chunk);
+  }
+
+  const byPackage = new Map<string, PackageCostAccumulator>();
+  for (const module of stats.modules) {
+    if (!module.packageName) {
+      continue;
+    }
+
+    const acc = byPackage.get(module.packageName) ?? {
+      totalBytes: 0,
+      moduleCount: 0,
+      sharedBytes: 0,
+      exclusiveBytes: 0,
+      chunkFiles: new Set<string>(),
+      routes: new Set<string>(),
+    };
+
+    acc.totalBytes += module.sizeBytes;
+    acc.moduleCount += 1;
+
+    // Any shared placement counts wholly as shared; a duplicate exclusive copy is find_duplicates' job.
+    let livesInSharedChunk = false;
+    for (const chunkId of new Set(module.chunkIds)) {
+      for (const file of chunkById.get(chunkId)?.files ?? []) {
+        const buildChunk = buildChunkByFile.get(normalizeChunkFile(file));
+        if (!buildChunk) {
+          continue;
+        }
+
+        acc.chunkFiles.add(buildChunk.chunkPath);
+        for (const route of buildChunk.sharedByRoutes) {
+          acc.routes.add(route);
+        }
+        if (buildChunk.isShared) {
+          livesInSharedChunk = true;
+        }
+      }
+    }
+
+    if (livesInSharedChunk) {
+      acc.sharedBytes += module.sizeBytes;
+    } else {
+      acc.exclusiveBytes += module.sizeBytes;
+    }
+
+    byPackage.set(module.packageName, acc);
+  }
+
+  return Array.from(byPackage.entries())
+    .map(([packageName, acc]) => ({
+      packageName,
+      totalBytes: acc.totalBytes,
+      moduleCount: acc.moduleCount,
+      chunkCount: acc.chunkFiles.size,
+      sharedBytes: acc.sharedBytes,
+      exclusiveBytes: acc.exclusiveBytes,
+      routeCount: acc.routes.size,
+    } satisfies PackageCostEntry))
+    .sort(
+      (left, right) =>
+        right.totalBytes - left.totalBytes || left.packageName.localeCompare(right.packageName),
+    )
+    .slice(0, limit);
 }

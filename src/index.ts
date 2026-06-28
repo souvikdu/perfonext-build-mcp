@@ -11,10 +11,13 @@ import { registerExplainGrowth } from './tools/explain-growth.js';
 import { registerHowToCollectStats } from './tools/how-to-collect-stats.js';
 import { registerLoadWebpackStats } from './tools/load-webpack-stats.js';
 import { registerTraceImport } from './tools/trace-import.js';
+import { registerFindDuplicates } from './tools/find-duplicates.js';
+import { registerExplainSharedChunks } from './tools/explain-shared-chunks.js';
+import { registerSuggestOptimizations } from './tools/suggest-optimizations.js';
 
 const server = new McpServer({
   name: 'perfonext-build-mcp',
-  version: '0.3.0',
+  version: '0.4.0',
 });
 
 registerLoadBuildStats(server);
@@ -25,6 +28,9 @@ registerExplainGrowth(server);
 registerHowToCollectStats(server);
 registerLoadWebpackStats(server);
 registerTraceImport(server);
+registerFindDuplicates(server);
+registerExplainSharedChunks(server);
+registerSuggestOptimizations(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
