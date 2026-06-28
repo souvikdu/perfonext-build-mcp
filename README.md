@@ -14,6 +14,9 @@
 - matches chunks across builds even though Next.js fingerprints filenames with content hashes
 - traces why a given module or npm package is bundled (import chain entry → module) when an
   optional webpack stats file is collected
+- finds npm packages duplicated across chunks and explains what dominates shared chunks
+- aggregates all of the above into severity-ranked, evidence-backed optimization suggestions tied to
+  concrete Next.js actions
 - keeps loaded build snapshots in memory so an MCP client can inspect them without re-reading the same build
 
 ## Inputs
@@ -25,9 +28,10 @@ The core tools read build artifacts developers already have after running `next 
 - `.next/app-build-manifest.json` when present
 - optional captured `next build` output text to derive build duration
 
-Import-level attribution (`trace_import`) additionally needs a webpack module-stats file at
-`.next/stats.json`. A stock `next build` does not emit one; `how_to_collect_stats` returns the recipe
-to generate it. The manifest tools above never read it, so they work with or without it.
+Import-level attribution (`trace_import`, `find_duplicates`, `explain_shared_chunks`) and the
+stats-enriched suggestions from `suggest_optimizations` additionally need a webpack module-stats file
+at `.next/stats.json`. A stock `next build` does not emit one; `how_to_collect_stats` returns the
+recipe to generate it. The manifest tools above never read it, so they work with or without it.
 
 ## Tools
 
@@ -41,6 +45,9 @@ to generate it. The manifest tools above never read it, so they work with or wit
 | `how_to_collect_stats` | Return the recipe (manual) or an action plan (automatic) to generate `.next/stats.json` |
 | `load_webpack_stats` | Parse `.next/stats.json` and link it to a loaded build; required before `trace_import` |
 | `trace_import` | Explain why a module or npm package is bundled by walking its import chain to the entry |
+| `find_duplicates` | Rank npm packages whose code is emitted into more than one chunk, by wasted bytes |
+| `explain_shared_chunks` | Show which packages and app code dominate the shared chunks loaded by many routes |
+| `suggest_optimizations` | Aggregate route, chunk, and webpack-stats evidence into severity-ranked, evidence-backed fix suggestions |
 
 The output stays machine-readable and includes raw byte counts so Copilot can explain regressions, prioritise fixes, and suggest concrete dependency or import-level follow-up.
 
@@ -56,10 +63,15 @@ stats file first:
 2. Call `load_build_stats({ buildDir })` to get a `buildId`.
 3. Call `load_webpack_stats({ buildId })` to parse the generated `.next/stats.json`.
 4. Call `trace_import({ buildId, moduleName })` to see the import chain that pulls a module in.
+5. Call `find_duplicates({ buildId })` to find packages bundled into more than one chunk, and
+   `explain_shared_chunks({ buildId })` to see what dominates the chunks loaded by many routes.
+6. Call `suggest_optimizations({ buildId })` for severity-ranked, evidence-backed recommendations.
+   It works on manifests alone and is enriched with dedupe, shared-chunk, and package-import
+   findings once stats are loaded.
 
 If the app builds with Turbopack there is no webpack module graph, so `how_to_collect_stats` says so
-and points back to the manifest-only tools. `trace_import` degrades gracefully with a breadcrumb when
-no stats file is loaded — it is never an error.
+and points back to the manifest-only tools. The attribution tools degrade gracefully with a
+breadcrumb when no stats file is loaded — it is never an error.
 
 ## Install
 
@@ -103,6 +115,9 @@ Add this server to VS Code settings:
 - "Explain what grew between my baseline and current `.next` builds and what I should fix first."
 - "Set up webpack stats collection so I can see why a package is bundled."
 - "Why is `axios` in my bundle? Trace its import chain."
+- "Which npm packages are duplicated across chunks and how many bytes are wasted?"
+- "What's dominating my shared chunks?"
+- "Suggest the highest-impact bundle optimizations for this build."
 
 ## Development
 

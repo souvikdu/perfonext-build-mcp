@@ -10,7 +10,8 @@ export function registerLoadWebpackStats(server: McpServer): void {
     title: 'Load Webpack Stats',
     description:
       'Parse the webpack module stats file (.next/stats.json) and link it to a build loaded with ' +
-      'load_build_stats. Required before trace_import.',
+      'load_build_stats. Unlocks the stats-powered tools: suggest_optimizations (enriched), ' +
+      'find_duplicates, explain_shared_chunks, and trace_import.',
     inputSchema: {
       buildId: z.string().describe('Build ID returned by load_build_stats; the stats.json is read from that build directory'),
     },
@@ -49,7 +50,8 @@ export function registerLoadWebpackStats(server: McpServer): void {
         : {}),
       nextStep: looksCollapsed
         ? 'Call how_to_collect_stats again, apply the corrected stats config, rebuild, then load_webpack_stats.'
-        : 'Now call trace_import with a module or package name (e.g. a heavy dependency) to see why it is bundled.',
+        : 'Now call suggest_optimizations for ranked, evidence-backed fixes (now enriched with this stats data). ' +
+          'Drill in with find_duplicates, explain_shared_chunks, or trace_import on a specific package.',
     });
   });
 }
