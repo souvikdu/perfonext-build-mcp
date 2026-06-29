@@ -459,6 +459,11 @@ const SHARED_BASELINE_WARNING_RATIO = 0.7;
 // optimize-package-imports is the lowest-confidence kind (import style is unknowable from build
 // stats), so cap how many can appear and let higher-confidence findings surface first.
 const OPT_IMPORTS_MAX = 5;
+const FRAMEWORK_ROUTES = new Set(['/404', '/500', '/_error', '/_app', '/_document']);
+
+function isFrameworkRoute(routePath: string): boolean {
+  return FRAMEWORK_ROUTES.has(routePath);
+}
 
 // Framework packages are loaded on (nearly) every route by design; you cannot move or barrel-trim
 // them out, so they are never a move-out or optimize-imports target.
@@ -531,14 +536,16 @@ export function suggestOptimizations(
       continue;
     }
 
+    const frameworkRoute = isFrameworkRoute(route.path);
     suggestions.push({
       kind: 'code-split-route',
       severity,
-      title: `Code-split ${route.path}`,
+      title: frameworkRoute ? `Slim down ${route.path}` : `Code-split ${route.path}`,
       bytes: route.exclusiveChunkBytes,
       evidence: `${route.path} ships ${formatBytes(route.exclusiveChunkBytes)} of route-exclusive JavaScript on initial load.`,
-      recommendedAction:
-        'Lazy-load interaction-only or below-the-fold components on this route with next/dynamic so they leave the initial bundle.',
+      recommendedAction: frameworkRoute
+        ? 'This is a Next.js framework route (error/404/500 page or app shell), not a content page. Its weight comes from what it imports — keep it lean by trimming heavy or global imports (providers, layout, shared components) rather than code-splitting.'
+        : 'Lazy-load interaction-only or below-the-fold components on this route with next/dynamic so they leave the initial bundle.',
       packageName: null,
       chunkPath: null,
       routePath: route.path,

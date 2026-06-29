@@ -67,7 +67,9 @@ stats file first:
    `explain_shared_chunks({ buildId })` to see what dominates the chunks loaded by many routes.
 6. Call `suggest_optimizations({ buildId })` for severity-ranked, evidence-backed recommendations.
    It works on manifests alone and is enriched with dedupe, shared-chunk, and package-import
-   findings once stats are loaded.
+   findings once stats are loaded. Code-split advice is tailored for Next.js framework routes
+   (`/404`, `/500`, `/_error`, `/_app`, `/_document`) — these are flagged to be slimmed down by
+   trimming imports rather than split with `next/dynamic`, which does not apply to them.
 
 If the app builds with Turbopack there is no webpack module graph, so `how_to_collect_stats` says so
 and points back to the manifest-only tools. The attribution tools degrade gracefully with a

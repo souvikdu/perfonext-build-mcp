@@ -363,6 +363,32 @@ describe('suggest_optimizations generic rules', () => {
     expect(baseline).toBeDefined();
     expect(baseline!.bytes).toBe(100000);
   });
+
+  it('rewords code-split advice for Next.js framework routes (no next/dynamic)', () => {
+    // /404 is a heavy framework route; a normal content route stays next/dynamic advice.
+    const frameworkBuild = makeBuild(
+      [makeRoute('/404', 950000, 940000), makeRoute('/products', 950000, 940000)],
+      buildChunks,
+      0,
+    );
+    const report = suggestOptimizations(frameworkBuild, null);
+
+    const notFound = report.suggestions.find(
+      s => s.kind === 'code-split-route' && s.routePath === '/404',
+    );
+    const products = report.suggestions.find(
+      s => s.kind === 'code-split-route' && s.routePath === '/products',
+    );
+
+    expect(notFound).toBeDefined();
+    expect(notFound!.title).toBe('Slim down /404');
+    expect(notFound!.recommendedAction).toContain('framework route');
+    expect(notFound!.recommendedAction).not.toContain('next/dynamic so they leave');
+
+    expect(products).toBeDefined();
+    expect(products!.title).toBe('Code-split /products');
+    expect(products!.recommendedAction).toContain('next/dynamic');
+  });
 });
 
 describe('chunk-file normalization is leading-slash tolerant', () => {
