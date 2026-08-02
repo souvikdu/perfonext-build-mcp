@@ -17,11 +17,6 @@ import type {
   WebpackModuleReason,
 } from './types.js';
 
-interface RawReason {
-  moduleName?: unknown;
-  userRequest?: unknown;
-}
-
 interface RawModule {
   name?: unknown;
   identifier?: unknown;
@@ -102,11 +97,12 @@ function normalizeReason(raw: unknown): WebpackModuleReason | null {
 }
 
 function normalizeModule(raw: RawModule): WebpackModule | null {
-  const name = typeof raw.name === 'string'
-    ? raw.name
-    : typeof raw.identifier === 'string'
-      ? raw.identifier
-      : null;
+  const name =
+    typeof raw.name === 'string'
+      ? raw.name
+      : typeof raw.identifier === 'string'
+        ? raw.identifier
+        : null;
   if (!name) {
     return null;
   }
@@ -181,11 +177,11 @@ export async function parseWebpackStats(
   const rawChunks = Array.isArray(raw.chunks) ? raw.chunks : [];
 
   const modules = rawModules
-    .map(module => normalizeModule(module as RawModule))
+    .map((module) => normalizeModule(module as RawModule))
     .filter((module): module is WebpackModule => module !== null);
 
   const chunks = rawChunks
-    .map(chunk => normalizeChunk(chunk as RawChunk))
+    .map((chunk) => normalizeChunk(chunk as RawChunk))
     .filter((chunk): chunk is WebpackChunk => chunk !== null);
 
   return {
@@ -231,16 +227,14 @@ function buildImportChain(
   target: WebpackModule,
   moduleIndex: Map<string, WebpackModule>,
 ): ImportChainNode[] {
-  const chain: ImportChainNode[] = [
-    { moduleName: target.name, packageName: target.packageName },
-  ];
+  const chain: ImportChainNode[] = [{ moduleName: target.name, packageName: target.packageName }];
   const visited = new Set<string>([target.name]);
   let current = target;
   const maxDepth = 25;
 
   for (let depth = 0; depth < maxDepth; depth += 1) {
     const parentReason = current.reasons.find(
-      reason => reason.moduleName !== null && !visited.has(reason.moduleName),
+      (reason) => reason.moduleName !== null && !visited.has(reason.moduleName),
     );
     if (!parentReason || parentReason.moduleName === null) {
       break;
@@ -270,13 +264,13 @@ export function traceImport(
 ): TraceImportResult {
   const query = moduleName.toLowerCase();
   const moduleIndex = buildModuleIndex(stats);
-  const chunkById = new Map(stats.chunks.map(chunk => [chunk.id, chunk] as const));
+  const chunkById = new Map(stats.chunks.map((chunk) => [chunk.id, chunk] as const));
 
   const matches = stats.modules
-    .filter(module => module.name.toLowerCase().includes(query))
+    .filter((module) => module.name.toLowerCase().includes(query))
     .sort((left, right) => right.sizeBytes - left.sizeBytes);
 
-  const traces: ImportTrace[] = matches.slice(0, limit).map(module => ({
+  const traces: ImportTrace[] = matches.slice(0, limit).map((module) => ({
     moduleName: module.name,
     packageName: module.packageName,
     sizeBytes: module.sizeBytes,
@@ -306,11 +300,8 @@ interface DuplicateAccumulator {
  * Rank npm packages whose code is emitted into more than one chunk. Wasted bytes are the
  * duplicated copies: `moduleBytes * (distinctChunkCount - 1)`, aggregated per package.
  */
-export function findDuplicates(
-  stats: ParsedWebpackStats,
-  limit = 20,
-): DuplicatePackageEntry[] {
-  const chunkById = new Map(stats.chunks.map(chunk => [chunk.id, chunk] as const));
+export function findDuplicates(stats: ParsedWebpackStats, limit = 20): DuplicatePackageEntry[] {
+  const chunkById = new Map(stats.chunks.map((chunk) => [chunk.id, chunk] as const));
   const byPackage = new Map<string, DuplicateAccumulator>();
 
   for (const module of stats.modules) {
@@ -343,14 +334,17 @@ export function findDuplicates(
 
   return Array.from(byPackage.entries())
     .filter(([, entry]) => entry.wastedBytes > 0)
-    .map(([packageName, entry]) => ({
-      packageName,
-      wastedBytes: entry.wastedBytes,
-      totalBytes: entry.totalBytes,
-      // Distinct chunks, not files: one chunk can emit several files (.js + .css).
-      chunkCount: entry.chunkIds.size,
-      chunkFiles: Array.from(entry.chunkFiles).sort(),
-    } satisfies DuplicatePackageEntry))
+    .map(
+      ([packageName, entry]) =>
+        ({
+          packageName,
+          wastedBytes: entry.wastedBytes,
+          totalBytes: entry.totalBytes,
+          // Distinct chunks, not files: one chunk can emit several files (.js + .css).
+          chunkCount: entry.chunkIds.size,
+          chunkFiles: Array.from(entry.chunkFiles).sort(),
+        }) satisfies DuplicatePackageEntry,
+    )
     .sort(
       (left, right) =>
         right.wastedBytes - left.wastedBytes || left.packageName.localeCompare(right.packageName),
@@ -386,11 +380,11 @@ export function explainSharedChunks(
   }
 
   // build.chunks is pre-sorted by sizeBytes desc, so the first `limit` shared chunks are the largest.
-  const sharedChunks = build.chunks.filter(chunk => chunk.isShared).slice(0, limit);
+  const sharedChunks = build.chunks.filter((chunk) => chunk.isShared).slice(0, limit);
 
-  return sharedChunks.map(chunk => {
+  return sharedChunks.map((chunk) => {
     const webpackChunk = chunkByFile.get(normalizeChunkFile(chunk.chunkPath));
-    const modules = webpackChunk ? modulesByChunkId.get(webpackChunk.id) ?? [] : [];
+    const modules = webpackChunk ? (modulesByChunkId.get(webpackChunk.id) ?? []) : [];
 
     const bytesByPackage = new Map<string, number>();
     let chunkModuleBytes = 0;
@@ -406,7 +400,10 @@ export function explainSharedChunks(
         bytes,
         shareOfChunk: chunkModuleBytes === 0 ? 0 : bytes / chunkModuleBytes,
       }))
-      .sort((left, right) => right.bytes - left.bytes || left.packageName.localeCompare(right.packageName))
+      .sort(
+        (left, right) =>
+          right.bytes - left.bytes || left.packageName.localeCompare(right.packageName),
+      )
       .slice(0, packagesPerChunk);
 
     return {
@@ -437,7 +434,7 @@ export function getPackageCosts(
   stats: ParsedWebpackStats,
   limit = 20,
 ): PackageCostEntry[] {
-  const chunkById = new Map(stats.chunks.map(chunk => [chunk.id, chunk] as const));
+  const chunkById = new Map(stats.chunks.map((chunk) => [chunk.id, chunk] as const));
   const buildChunkByFile = new Map<string, BuildChunk>();
   for (const chunk of build.chunks) {
     buildChunkByFile.set(normalizeChunkFile(chunk.chunkPath), chunk);
@@ -490,15 +487,18 @@ export function getPackageCosts(
   }
 
   return Array.from(byPackage.entries())
-    .map(([packageName, acc]) => ({
-      packageName,
-      totalBytes: acc.totalBytes,
-      moduleCount: acc.moduleCount,
-      chunkCount: acc.chunkFiles.size,
-      sharedBytes: acc.sharedBytes,
-      exclusiveBytes: acc.exclusiveBytes,
-      routeCount: acc.routes.size,
-    } satisfies PackageCostEntry))
+    .map(
+      ([packageName, acc]) =>
+        ({
+          packageName,
+          totalBytes: acc.totalBytes,
+          moduleCount: acc.moduleCount,
+          chunkCount: acc.chunkFiles.size,
+          sharedBytes: acc.sharedBytes,
+          exclusiveBytes: acc.exclusiveBytes,
+          routeCount: acc.routes.size,
+        }) satisfies PackageCostEntry,
+    )
     .sort(
       (left, right) =>
         right.totalBytes - left.totalBytes || left.packageName.localeCompare(right.packageName),

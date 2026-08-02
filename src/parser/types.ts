@@ -123,10 +123,7 @@ export interface OverallGrowthSummary {
 }
 
 export type GrowthSuggestionKind =
-  | 'shared-chunk-growth'
-  | 'new-chunk'
-  | 'chunk-growth'
-  | 'route-regression';
+  'shared-chunk-growth' | 'new-chunk' | 'chunk-growth' | 'route-regression';
 
 export interface GrowthSuggestion {
   kind: GrowthSuggestionKind;

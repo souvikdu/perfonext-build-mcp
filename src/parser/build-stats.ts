@@ -2,7 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
-import type { BuildChunk, BuildRoute, ParsedBuildStats, PrerenderBlockedReason, RouteType } from './types.js';
+import type {
+  BuildChunk,
+  BuildRoute,
+  ParsedBuildStats,
+  PrerenderBlockedReason,
+  RouteType,
+} from './types.js';
 
 interface BuildManifestRaw {
   pages?: unknown;
@@ -118,7 +124,9 @@ function getPrerenderBlockedReason(
 }
 
 export function parseBuildDurationMs(output: string): number | null {
-  const match = output.match(/(?:compiled(?:\s+\w+)*\s+in|done\s+in)\s+(\d+(?:\.\d+)?)\s*(ms|s|m)\b/i);
+  const match = output.match(
+    /(?:compiled(?:\s+\w+)*\s+in|done\s+in)\s+(\d+(?:\.\d+)?)\s*(ms|s|m)\b/i,
+  );
   if (!match) {
     return null;
   }
@@ -151,7 +159,9 @@ export async function parseBuildStats(
 
   const buildManifest = await readJsonIfPresent<BuildManifestRaw>(buildManifestPath);
   if (!buildManifest) {
-    throw new Error(`Could not find build-manifest.json in ${buildDir}. Run next build first and point this tool at the .next directory.`);
+    throw new Error(
+      `Could not find build-manifest.json in ${buildDir}. Run next build first and point this tool at the .next directory.`,
+    );
   }
 
   const prerenderManifest = await readJsonIfPresent<PrerenderManifestRaw>(prerenderManifestPath);
@@ -203,7 +213,7 @@ export async function parseBuildStats(
   }
 
   const chunkSizeEntries = await Promise.all(
-    Array.from(chunkRouteMap.keys()).map(async chunkPath => {
+    Array.from(chunkRouteMap.keys()).map(async (chunkPath) => {
       const normalized = chunkPath.replace(/^\//, '');
       const sizeBytes = await getFileSizeBytes(join(buildDir, normalized));
       return [chunkPath, sizeBytes] as const;
@@ -267,7 +277,10 @@ export async function parseBuildStats(
     routes,
     chunks,
     totalChunkBytes: chunks.reduce((sum, chunk) => sum + chunk.sizeBytes, 0),
-    sharedChunkBytes: chunks.reduce((sum, chunk) => sum + (chunk.isShared ? chunk.sizeBytes : 0), 0),
+    sharedChunkBytes: chunks.reduce(
+      (sum, chunk) => sum + (chunk.isShared ? chunk.sizeBytes : 0),
+      0,
+    ),
     buildTimeMs,
   } satisfies ParsedBuildStats;
 }

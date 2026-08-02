@@ -3,7 +3,14 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { compareBuilds, explainGrowth, getBuildSummary, getLargestRoutes, getSharedChunks, normalizeChunkKey } from '../src/parser/analysis.js';
+import {
+  compareBuilds,
+  explainGrowth,
+  getBuildSummary,
+  getLargestRoutes,
+  getSharedChunks,
+  normalizeChunkKey,
+} from '../src/parser/analysis.js';
 import { parseBuildDurationMs, parseBuildStats } from '../src/parser/build-stats.js';
 import type { ParsedBuildStats } from '../src/parser/types.js';
 
@@ -12,7 +19,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixtureBuildDir = resolve(__dirname, 'fixtures/sample-next-build/.next');
 const fixtureBuildOutputPath = resolve(__dirname, 'fixtures/sample-next-build/build-output.txt');
 const fixtureUpdatedBuildDir = resolve(__dirname, 'fixtures/sample-next-build-updated/.next');
-const fixtureUpdatedBuildOutputPath = resolve(__dirname, 'fixtures/sample-next-build-updated/build-output.txt');
+const fixtureUpdatedBuildOutputPath = resolve(
+  __dirname,
+  'fixtures/sample-next-build-updated/build-output.txt',
+);
 
 describe('build stats parser', () => {
   it('parses Next.js build artifacts and emitted chunk sizes', async () => {
@@ -24,19 +34,19 @@ describe('build stats parser', () => {
     expect(build.sharedChunkBytes).toBeGreaterThan(0);
     expect(build.buildTimeMs).toBe(12300);
 
-    const dashboard = build.routes.find(route => route.path === '/dashboard');
+    const dashboard = build.routes.find((route) => route.path === '/dashboard');
     expect(dashboard?.type).toBe('isr');
     expect(dashboard?.isPrerendered).toBe(true);
     expect(dashboard?.prerenderBlockedReason).toBe('isr');
 
-    const blog = build.routes.find(route => route.path === '/blog/[slug]');
+    const blog = build.routes.find((route) => route.path === '/blog/[slug]');
     expect(blog?.type).toBe('dynamic');
     expect(blog?.prerenderBlockedReason).toBe('dynamic-params');
 
-    const home = build.routes.find(route => route.path === '/');
+    const home = build.routes.find((route) => route.path === '/');
     expect(home?.prerenderBlockedReason).toBeNull();
 
-    const search = build.routes.find(route => route.path === '/search');
+    const search = build.routes.find((route) => route.path === '/search');
     expect(search?.isAppRoute).toBe(true);
     expect(search?.prerenderBlockedReason).toBeNull();
   });
@@ -103,7 +113,7 @@ describe('build stats analysis', () => {
 
     // Route findings contain only grown routes, ranked by delta
     expect(explanation.routeFindings.length).toBeGreaterThan(0);
-    expect(explanation.routeFindings.every(f => f.deltaBytes > 0)).toBe(true);
+    expect(explanation.routeFindings.every((f) => f.deltaBytes > 0)).toBe(true);
     expect(explanation.routeFindings[0].path).toBe('/dashboard');
     expect(explanation.routeFindings[0].topContributingChunks.length).toBeGreaterThan(0);
     expect(['info', 'warning', 'critical']).toContain(explanation.routeFindings[0].severity);
@@ -112,7 +122,7 @@ describe('build stats analysis', () => {
     expect(explanation.topGrowingChunks.length).toBeGreaterThan(0);
     expect(explanation.topGrowingChunks[0].chunkPath).toBe('static/chunks/dashboard.js');
     expect(explanation.topGrowingChunks[0].deltaBytes).toBeGreaterThan(0);
-    expect(explanation.topGrowingChunks.every(c => c.deltaBytes > 0)).toBe(true);
+    expect(explanation.topGrowingChunks.every((c) => c.deltaBytes > 0)).toBe(true);
     // Chunks are sorted by descending delta
     for (let i = 1; i < explanation.topGrowingChunks.length; i++) {
       expect(explanation.topGrowingChunks[i - 1].deltaBytes).toBeGreaterThanOrEqual(
@@ -152,9 +162,9 @@ describe('build stats analysis', () => {
     }
 
     // The growing dashboard chunk is surfaced as a concrete suggestion
-    expect(
-      explanation.suggestions.some(s => s.chunkPath === 'static/chunks/dashboard.js'),
-    ).toBe(true);
+    expect(explanation.suggestions.some((s) => s.chunkPath === 'static/chunks/dashboard.js')).toBe(
+      true,
+    );
   });
 
   it('returns no suggestions when the current build does not grow', async () => {
@@ -195,19 +205,19 @@ describe('hash-normalized chunk matching', () => {
     id: string,
     chunks: Array<{ chunkPath: string; sizeBytes: number; routes: string[] }>,
   ): ParsedBuildStats {
-    const routeNames = Array.from(new Set(chunks.flatMap(chunk => chunk.routes)));
+    const routeNames = Array.from(new Set(chunks.flatMap((chunk) => chunk.routes)));
     return {
       id,
       buildDir: id,
       buildOutputPath: null,
-      routes: routeNames.map(path => {
-        const routeChunks = chunks.filter(chunk => chunk.routes.includes(path));
+      routes: routeNames.map((path) => {
+        const routeChunks = chunks.filter((chunk) => chunk.routes.includes(path));
         const totalBytes = routeChunks.reduce((sum, chunk) => sum + chunk.sizeBytes, 0);
         return {
           path,
           type: 'static' as const,
           prerenderBlockedReason: null,
-          chunkPaths: routeChunks.map(chunk => chunk.chunkPath),
+          chunkPaths: routeChunks.map((chunk) => chunk.chunkPath),
           totalBytes,
           initialLoadBytes: totalBytes,
           sharedChunkBytes: 0,
@@ -216,7 +226,7 @@ describe('hash-normalized chunk matching', () => {
           isAppRoute: false,
         };
       }),
-      chunks: chunks.map(chunk => ({
+      chunks: chunks.map((chunk) => ({
         chunkPath: chunk.chunkPath,
         sizeBytes: chunk.sizeBytes,
         routeCount: chunk.routes.length,
@@ -231,10 +241,18 @@ describe('hash-normalized chunk matching', () => {
 
   it('matches a rehashed chunk across builds instead of flagging it as new', () => {
     const baseline = makeBuild('baseline', [
-      { chunkPath: 'static/chunks/framework-aaaaaaaaaaaaaaaa.js', sizeBytes: 100_000, routes: ['/', '/about'] },
+      {
+        chunkPath: 'static/chunks/framework-aaaaaaaaaaaaaaaa.js',
+        sizeBytes: 100_000,
+        routes: ['/', '/about'],
+      },
     ]);
     const current = makeBuild('current', [
-      { chunkPath: 'static/chunks/framework-bbbbbbbbbbbbbbbb.js', sizeBytes: 101_000, routes: ['/', '/about'] },
+      {
+        chunkPath: 'static/chunks/framework-bbbbbbbbbbbbbbbb.js',
+        sizeBytes: 101_000,
+        routes: ['/', '/about'],
+      },
     ]);
 
     const explanation = explainGrowth(baseline, current, 10);
@@ -250,10 +268,18 @@ describe('hash-normalized chunk matching', () => {
 
   it('still flags a genuinely new chunk after normalization', () => {
     const baseline = makeBuild('baseline', [
-      { chunkPath: 'static/chunks/framework-aaaaaaaaaaaaaaaa.js', sizeBytes: 100_000, routes: ['/'] },
+      {
+        chunkPath: 'static/chunks/framework-aaaaaaaaaaaaaaaa.js',
+        sizeBytes: 100_000,
+        routes: ['/'],
+      },
     ]);
     const current = makeBuild('current', [
-      { chunkPath: 'static/chunks/framework-bbbbbbbbbbbbbbbb.js', sizeBytes: 100_000, routes: ['/'] },
+      {
+        chunkPath: 'static/chunks/framework-bbbbbbbbbbbbbbbb.js',
+        sizeBytes: 100_000,
+        routes: ['/'],
+      },
       { chunkPath: 'static/chunks/charting-cccccccccccccccc.js', sizeBytes: 80_000, routes: ['/'] },
     ]);
 
@@ -265,7 +291,7 @@ describe('hash-normalized chunk matching', () => {
       'static/chunks/charting-cccccccccccccccc.js',
     );
     expect(explanation.topGrowingChunks[0].isNew).toBe(true);
-    expect(explanation.suggestions.some(s => s.kind === 'new-chunk')).toBe(true);
+    expect(explanation.suggestions.some((s) => s.kind === 'new-chunk')).toBe(true);
   });
 
   it('does not invent growth for identical pure-hash CSS files across builds', () => {

@@ -123,33 +123,43 @@ function turbopackResponse(): Record<string, unknown> {
 }
 
 export function registerHowToCollectStats(server: McpServer): void {
-  server.registerTool('how_to_collect_stats', {
-    title: 'How To Collect Webpack Stats',
-    description:
-      'Explain how to generate the webpack stats file (.next/stats.json) required by the bundle attribution ' +
-      'tools. Choose manual (a recipe you apply yourself) or automatic (an action plan Copilot executes).',
-    inputSchema: {
-      method: z
-        .enum(['manual', 'automatic'])
-        .describe('manual: return a recipe to apply yourself. automatic: return an action plan for Copilot to execute.'),
-      scenario: z
-        .enum(['webpack', 'turbopack'])
-        .optional()
-        .describe('Collection context. Defaults to webpack. Use turbopack if the app builds with --turbopack.'),
+  server.registerTool(
+    'how_to_collect_stats',
+    {
+      title: 'How To Collect Webpack Stats',
+      description:
+        'Explain how to generate the webpack stats file (.next/stats.json) required by the bundle attribution ' +
+        'tools. Choose manual (a recipe you apply yourself) or automatic (an action plan Copilot executes).',
+      inputSchema: {
+        method: z
+          .enum(['manual', 'automatic'])
+          .describe(
+            'manual: return a recipe to apply yourself. automatic: return an action plan for Copilot to execute.',
+          ),
+        scenario: z
+          .enum(['webpack', 'turbopack'])
+          .optional()
+          .describe(
+            'Collection context. Defaults to webpack. Use turbopack if the app builds with --turbopack.',
+          ),
+      },
     },
-  }, async ({ method, scenario }) => {
-    const resolvedScenario: CollectionScenario = scenario ?? 'webpack';
-    const resolvedMethod: CollectionMethod = method;
-    const payload =
-      resolvedMethod === 'manual'
-        ? buildManualResponse(resolvedScenario)
-        : buildAutomaticResponse(resolvedScenario);
+    async ({ method, scenario }) => {
+      const resolvedScenario: CollectionScenario = scenario ?? 'webpack';
+      const resolvedMethod: CollectionMethod = method;
+      const payload =
+        resolvedMethod === 'manual'
+          ? buildManualResponse(resolvedScenario)
+          : buildAutomaticResponse(resolvedScenario);
 
-    return {
-      content: [{
-        type: 'text' as const,
-        text: JSON.stringify(payload, null, 2),
-      }],
-    };
-  });
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(payload, null, 2),
+          },
+        ],
+      };
+    },
+  );
 }
