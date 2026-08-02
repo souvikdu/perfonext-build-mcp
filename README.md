@@ -1,8 +1,49 @@
 # perfonext-build-mcp
 
-[![npm](https://img.shields.io/npm/v/@perfonext/build-mcp)](https://www.npmjs.com/package/@perfonext/build-mcp)
+> Analyze Next.js build artifacts to find heavy routes, shared chunks, and bundle growth.
 
-`perfonext-build-mcp` is an MCP server for loading and analyzing Next.js build artifacts. It gives GitHub Copilot and other MCP clients structured bundle and route-size data they can reason over instead of forcing the model to inspect raw `.next` manifests.
+[![npm](https://img.shields.io/npm/v/@perfonext/build-mcp)](https://www.npmjs.com/package/@perfonext/build-mcp)
+[![npm downloads](https://img.shields.io/npm/dt/@perfonext/build-mcp)](https://www.npmjs.com/package/@perfonext/build-mcp)
+[![license](https://img.shields.io/npm/l/@perfonext/build-mcp)](https://www.npmjs.com/package/@perfonext/build-mcp)
+
+`perfonext-build-mcp` is a Model Context Protocol (MCP) server that gives GitHub Copilot, Claude Desktop,
+Claude Code, and other MCP clients structured bundle analysis for Next.js performance work. It loads `.next`
+build artifacts and turns them into route-size rankings, shared-chunk and duplication findings, and
+severity-ranked fix suggestions — evidence agents can reason over instead of inspecting raw `.next` manifests.
+
+## Quick Start
+
+Run directly with `npx`:
+
+```bash
+npx -y @perfonext/build-mcp
+```
+
+Or install globally:
+
+```bash
+npm install -g @perfonext/build-mcp
+```
+
+The executable command remains `perfonext-build-mcp` after installation.
+
+Add the server to VS Code in `.vscode/mcp.json` (the workspace MCP configuration file):
+
+```json
+{
+  "servers": {
+    "perfonext-build": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@perfonext/build-mcp"]
+    }
+  }
+}
+```
+
+Then reload the VS Code window and run **MCP: List Servers** to start it, or accept the trust prompt when it appears. For a locally-built checkout, point `command`/`args` at `node` and the repo's `dist/index.js` instead.
+
+Then ask Copilot: _"Load the Next.js build in `./.next` and show me the largest routes."_
 
 ## What It Does
 
@@ -19,6 +60,26 @@
   concrete Next.js actions
 - keeps loaded build snapshots in memory so an MCP client can inspect them without re-reading the same build
 
+## Tools
+
+| Tool                    | Description                                                                                                        |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `load_build_stats`      | Parse a Next.js `.next` directory and load the build snapshot into memory                                          |
+| `get_largest_routes`    | Rank the heaviest user-facing routes by total emitted chunk bytes                                                  |
+| `get_shared_chunks`     | Rank shared chunks by size and show which routes depend on them                                                    |
+| `compare_builds`        | Compare a baseline and current build snapshot to show which routes and chunks grew or shrank                       |
+| `explain_growth`        | Severity-rank which routes and chunks drove bundle growth between two builds, with evidence-backed fix suggestions |
+| `how_to_collect_stats`  | Return the recipe (manual) or an action plan (automatic) to generate `.next/stats.json`                            |
+| `load_webpack_stats`    | Parse `.next/stats.json` and link it to a loaded build; required before `trace_import`                             |
+| `trace_import`          | Explain why a module or npm package is bundled by walking its import chain to the entry                            |
+| `find_duplicates`       | Rank npm packages whose code is emitted into more than one chunk, by wasted bytes                                  |
+| `explain_shared_chunks` | Show which packages and app code dominate the shared chunks loaded by many routes                                  |
+| `suggest_optimizations` | Aggregate route, chunk, and webpack-stats evidence into severity-ranked, evidence-backed fix suggestions           |
+
+The output stays machine-readable and includes raw byte counts so Copilot can explain regressions, prioritise fixes, and suggest concrete dependency or import-level follow-up.
+
+Because Next.js content-hashes emitted filenames (`framework-<hash>.js`, and CSS files named purely by hash), `compare_builds` and `explain_growth` match chunks across builds by a hash-normalized identity. This prevents a rehashed-but-unchanged chunk from being misreported as removed-and-recreated, while still flagging genuinely new chunks.
+
 ## Inputs
 
 The core tools read build artifacts developers already have after running `next build`:
@@ -32,26 +93,6 @@ Import-level attribution (`trace_import`, `find_duplicates`, `explain_shared_chu
 stats-enriched suggestions from `suggest_optimizations` additionally need a webpack module-stats file
 at `.next/stats.json`. A stock `next build` does not emit one; `how_to_collect_stats` returns the
 recipe to generate it. The manifest tools above never read it, so they work with or without it.
-
-## Tools
-
-| Tool | Description |
-|------|-------------|
-| `load_build_stats` | Parse a Next.js `.next` directory and load the build snapshot into memory |
-| `get_largest_routes` | Rank the heaviest user-facing routes by total emitted chunk bytes |
-| `get_shared_chunks` | Rank shared chunks by size and show which routes depend on them |
-| `compare_builds` | Compare a baseline and current build snapshot to show which routes and chunks grew or shrank |
-| `explain_growth` | Severity-rank which routes and chunks drove bundle growth between two builds, with evidence-backed fix suggestions |
-| `how_to_collect_stats` | Return the recipe (manual) or an action plan (automatic) to generate `.next/stats.json` |
-| `load_webpack_stats` | Parse `.next/stats.json` and link it to a loaded build; required before `trace_import` |
-| `trace_import` | Explain why a module or npm package is bundled by walking its import chain to the entry |
-| `find_duplicates` | Rank npm packages whose code is emitted into more than one chunk, by wasted bytes |
-| `explain_shared_chunks` | Show which packages and app code dominate the shared chunks loaded by many routes |
-| `suggest_optimizations` | Aggregate route, chunk, and webpack-stats evidence into severity-ranked, evidence-backed fix suggestions |
-
-The output stays machine-readable and includes raw byte counts so Copilot can explain regressions, prioritise fixes, and suggest concrete dependency or import-level follow-up.
-
-Because Next.js content-hashes emitted filenames (`framework-<hash>.js`, and CSS files named purely by hash), `compare_builds` and `explain_growth` match chunks across builds by a hash-normalized identity. This prevents a rehashed-but-unchanged chunk from being misreported as removed-and-recreated, while still flagging genuinely new chunks.
 
 ### Deep bundle attribution (optional)
 
@@ -75,39 +116,6 @@ If the app builds with Turbopack there is no webpack module graph, so `how_to_co
 and points back to the manifest-only tools. The attribution tools degrade gracefully with a
 breadcrumb when no stats file is loaded — it is never an error.
 
-## Install
-
-Run directly with `npx`:
-
-```bash
-npx -y @perfonext/build-mcp
-```
-
-Or install globally:
-
-```bash
-npm install -g @perfonext/build-mcp
-```
-
-The executable command remains `perfonext-build-mcp` after installation.
-
-## MCP Configuration
-
-Add this server to VS Code settings:
-
-```json
-{
-  "mcp": {
-    "servers": {
-      "perfonext-build": {
-        "command": "npx",
-        "args": ["-y", "@perfonext/build-mcp"]
-      }
-    }
-  }
-}
-```
-
 ## Example Copilot Prompts
 
 - "Load the Next.js build in `./.next` and show me the largest routes."
@@ -120,6 +128,11 @@ Add this server to VS Code settings:
 - "Which npm packages are duplicated across chunks and how many bytes are wasted?"
 - "What's dominating my shared chunks?"
 - "Suggest the highest-impact bundle optimizations for this build."
+
+## Related Perfonext Tools
+
+- [perfonext-profiler-mcp](https://github.com/souvikdu/perfonext-profiler-mcp) — CPU profiling (V8/Chrome) for Next.js servers
+- [perfonext-render-mcp](https://github.com/souvikdu/perfonext-render-mcp) — React render analysis for Next.js apps
 
 ## Development
 

@@ -101,7 +101,7 @@ export function getBuildSummary(build: ParsedBuildStats): {
     buildDir: build.buildDir,
     routeCount: build.routes.length,
     chunkCount: build.chunks.length,
-    sharedChunkCount: build.chunks.filter(chunk => chunk.isShared).length,
+    sharedChunkCount: build.chunks.filter((chunk) => chunk.isShared).length,
     totalChunkBytes: build.totalChunkBytes,
     sharedChunkBytes: build.sharedChunkBytes,
     buildTimeMs: build.buildTimeMs,
@@ -109,7 +109,7 @@ export function getBuildSummary(build: ParsedBuildStats): {
 }
 
 export function getLargestRoutes(build: ParsedBuildStats, limit: number): RouteSummaryEntry[] {
-  return build.routes.slice(0, limit).map(route => ({
+  return build.routes.slice(0, limit).map((route) => ({
     path: route.path,
     type: route.type,
     prerenderBlockedReason: route.prerenderBlockedReason,
@@ -126,14 +126,15 @@ export function getLargestRoutes(build: ParsedBuildStats, limit: number): RouteS
 
 export function getSharedChunks(build: ParsedBuildStats, limit: number): SharedChunkSummaryEntry[] {
   return build.chunks
-    .filter(chunk => chunk.isShared)
+    .filter((chunk) => chunk.isShared)
     .slice(0, limit)
-    .map(chunk => ({
+    .map((chunk) => ({
       chunkPath: chunk.chunkPath,
       sizeBytes: chunk.sizeBytes,
       routeCount: chunk.routeCount,
       sharedByRoutes: chunk.sharedByRoutes,
-      shareOfAllChunkBytes: build.totalChunkBytes === 0 ? 0 : chunk.sizeBytes / build.totalChunkBytes,
+      shareOfAllChunkBytes:
+        build.totalChunkBytes === 0 ? 0 : chunk.sizeBytes / build.totalChunkBytes,
     }));
 }
 
@@ -142,12 +143,12 @@ export function compareBuilds(
   current: ParsedBuildStats,
   limit: number,
 ): BuildComparison {
-  const baselineRoutes = new Map(baseline.routes.map(route => [route.path, route]));
-  const currentRoutes = new Map(current.routes.map(route => [route.path, route]));
+  const baselineRoutes = new Map(baseline.routes.map((route) => [route.path, route]));
+  const currentRoutes = new Map(current.routes.map((route) => [route.path, route]));
   const allRoutePaths = Array.from(new Set([...baselineRoutes.keys(), ...currentRoutes.keys()]));
 
   const routeDeltas: RouteDeltaEntry[] = allRoutePaths
-    .map(path => {
+    .map((path) => {
       const baselineRoute = baselineRoutes.get(path);
       const currentRoute = currentRoutes.get(path);
       const baselineBytes = baselineRoute?.totalBytes ?? 0;
@@ -168,7 +169,7 @@ export function compareBuilds(
   const allChunkKeys = Array.from(new Set([...baselineChunks.keys(), ...currentChunks.keys()]));
 
   const chunkDeltas: ChunkDeltaEntry[] = allChunkKeys
-    .map(key => {
+    .map((key) => {
       const baselineChunk = baselineChunks.get(key);
       const currentChunk = currentChunks.get(key);
       const baselineBytes = baselineChunk?.sizeBytes ?? 0;
@@ -354,7 +355,7 @@ export function explainGrowth(
   const allChunkKeys = Array.from(new Set([...baselineChunks.keys(), ...currentChunks.keys()]));
 
   const chunkContributions: Array<ChunkGrowthContribution & { key: string }> = allChunkKeys
-    .map(key => {
+    .map((key) => {
       const baselineChunk = baselineChunks.get(key);
       const currentChunk = currentChunks.get(key);
       const baselineBytes = baselineChunk?.sizeBytes ?? 0;
@@ -370,19 +371,19 @@ export function explainGrowth(
         affectedRouteCount: currentChunk?.routeCount ?? baselineChunk?.routeCount ?? 0,
       };
     })
-    .filter(entry => entry.deltaBytes > 0)
+    .filter((entry) => entry.deltaBytes > 0)
     .sort((left, right) => right.deltaBytes - left.deltaBytes);
 
   const topGrowingChunks: ChunkGrowthContribution[] = chunkContributions
     .slice(0, limit)
     .map(({ key: _key, ...rest }) => rest);
 
-  const baselineRoutes = new Map(baseline.routes.map(route => [route.path, route]));
-  const currentRoutes = new Map(current.routes.map(route => [route.path, route]));
+  const baselineRoutes = new Map(baseline.routes.map((route) => [route.path, route]));
+  const currentRoutes = new Map(current.routes.map((route) => [route.path, route]));
   const allRoutePaths = Array.from(new Set([...baselineRoutes.keys(), ...currentRoutes.keys()]));
 
   const routeFindings = allRoutePaths
-    .map(path => {
+    .map((path) => {
       const baselineRoute = baselineRoutes.get(path);
       const currentRoute = currentRoutes.get(path);
       const baselineBytes = baselineRoute?.totalBytes ?? 0;
@@ -396,7 +397,7 @@ export function explainGrowth(
       ]);
 
       const topContributingChunks = chunkContributions
-        .filter(chunk => routeChunkKeys.has(chunk.key))
+        .filter((chunk) => routeChunkKeys.has(chunk.key))
         .slice(0, 5)
         .map(({ key: _key, ...rest }) => rest);
 
@@ -408,11 +409,11 @@ export function explainGrowth(
         topContributingChunks,
       } satisfies RouteGrowthFinding;
     })
-    .filter(finding => finding.deltaBytes > 0)
+    .filter((finding) => finding.deltaBytes > 0)
     .sort((left, right) => right.deltaBytes - left.deltaBytes)
     .slice(0, limit);
 
-  const allDeltas = allChunkKeys.map(key => {
+  const allDeltas = allChunkKeys.map((key) => {
     const baselineBytes = baselineChunks.get(key)?.sizeBytes ?? 0;
     const currentBytes = currentChunks.get(key)?.sizeBytes ?? 0;
     return currentBytes - baselineBytes;
@@ -434,10 +435,10 @@ export function explainGrowth(
       totalDeltaBytes,
       totalDeltaRatio: calculateDeltaRatio(baseline.totalChunkBytes, current.totalChunkBytes),
       severity: totalDeltaBytes > 0 ? overallSeverity : 'info',
-      newChunkCount: allChunkKeys.filter(key => !baselineChunks.has(key)).length,
-      removedChunkCount: allChunkKeys.filter(key => !currentChunks.has(key)).length,
-      grownChunkCount: allDeltas.filter(d => d > 0).length,
-      shrunkChunkCount: allDeltas.filter(d => d < 0).length,
+      newChunkCount: allChunkKeys.filter((key) => !baselineChunks.has(key)).length,
+      removedChunkCount: allChunkKeys.filter((key) => !currentChunks.has(key)).length,
+      grownChunkCount: allDeltas.filter((d) => d > 0).length,
+      shrunkChunkCount: allDeltas.filter((d) => d < 0).length,
     },
     routeFindings,
     topGrowingChunks,
@@ -510,7 +511,9 @@ function severityForBytes(bytes: number, critical: number, warning: number): Gro
 }
 
 function stableSuggestionKey(suggestion: OptimizationSuggestion): string {
-  return [suggestion.kind, suggestion.packageName, suggestion.chunkPath, suggestion.routePath].join('|');
+  return [suggestion.kind, suggestion.packageName, suggestion.chunkPath, suggestion.routePath].join(
+    '|',
+  );
 }
 
 /**
@@ -555,8 +558,8 @@ export function suggestOptimizations(
   // Manifest-only: flag when the shared baseline dominates a typical page. Both sides use the route
   // MEDIAN. The numerator is per-route sharedChunkBytes (what a route actually loads), not
   // build.sharedChunkBytes (the sum of all shared chunks, which can exceed any one page's weight).
-  const medianRouteBytes = median(build.routes.map(route => route.totalBytes));
-  const medianRouteSharedBytes = median(build.routes.map(route => route.sharedChunkBytes));
+  const medianRouteBytes = median(build.routes.map((route) => route.totalBytes));
+  const medianRouteSharedBytes = median(build.routes.map((route) => route.sharedChunkBytes));
   if (
     build.routes.length >= 2 &&
     medianRouteBytes > 0 &&
@@ -581,7 +584,11 @@ export function suggestOptimizations(
   if (stats) {
     // Dedupe packages emitted into more than one chunk.
     for (const duplicate of findDuplicates(stats, 50)) {
-      const severity = severityForBytes(duplicate.wastedBytes, OPT_CRITICAL_BYTES, OPT_WARNING_BYTES);
+      const severity = severityForBytes(
+        duplicate.wastedBytes,
+        OPT_CRITICAL_BYTES,
+        OPT_WARNING_BYTES,
+      );
       if (severity === 'info') {
         continue;
       }
@@ -669,9 +676,12 @@ export function suggestOptimizations(
     }
 
     importCandidates
-      .sort((left, right) => right.bytes - left.bytes || left.packageName!.localeCompare(right.packageName!))
+      .sort(
+        (left, right) =>
+          right.bytes - left.bytes || left.packageName!.localeCompare(right.packageName!),
+      )
       .slice(0, OPT_IMPORTS_MAX)
-      .forEach(candidate => suggestions.push(candidate));
+      .forEach((candidate) => suggestions.push(candidate));
   }
 
   const ranked = suggestions

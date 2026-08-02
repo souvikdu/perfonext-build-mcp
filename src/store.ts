@@ -27,7 +27,7 @@ export function listBuildStats(): Array<{
   totalChunkBytes: number;
   buildTimeMs: number | null;
 }> {
-  return Array.from(builds.values()).map(build => ({
+  return Array.from(builds.values()).map((build) => ({
     id: build.id,
     buildDir: build.buildDir,
     routeCount: build.routes.length,

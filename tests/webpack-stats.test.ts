@@ -91,7 +91,7 @@ describe('manifest tools are unaffected by stats presence', () => {
     expect(withoutStats.routes.length).toBeGreaterThan(0);
     // The build-stats parser reads manifests only; the stats.json present in
     // fixtureBuildDir must never leak into the parsed chunk output.
-    expect(withStats.chunks.some(chunk => chunk.chunkPath.includes('stats.json'))).toBe(false);
+    expect(withStats.chunks.some((chunk) => chunk.chunkPath.includes('stats.json'))).toBe(false);
   });
 });
 
@@ -100,12 +100,12 @@ describe('find_duplicates', () => {
     const stats = await parseWebpackStats(fixtureBuildDir, 'build-1');
     const duplicates = findDuplicates(stats!);
 
-    const lodash = duplicates.find(entry => entry.packageName === 'lodash');
+    const lodash = duplicates.find((entry) => entry.packageName === 'lodash');
     expect(lodash).toBeDefined();
     expect(lodash!.wastedBytes).toBe(70000);
     expect(lodash!.chunkCount).toBe(2);
     // Single-chunk packages (react, react-dom) waste nothing and must be excluded.
-    expect(duplicates.some(entry => entry.packageName === 'react-dom')).toBe(false);
+    expect(duplicates.some((entry) => entry.packageName === 'react-dom')).toBe(false);
     // Sorted by wasted bytes desc — lodash leads.
     expect(duplicates[0].packageName).toBe('lodash');
   });
@@ -118,12 +118,12 @@ describe('explain_shared_chunks', () => {
     const compositions = explainSharedChunks(build, stats!);
 
     expect(compositions.length).toBeGreaterThan(0);
-    const sharedSearch = compositions.find(chunk => chunk.chunkPath.includes('shared-search'));
+    const sharedSearch = compositions.find((chunk) => chunk.chunkPath.includes('shared-search'));
     expect(sharedSearch).toBeDefined();
     // date-fns dominates the shared-search chunk.
     expect(sharedSearch!.topPackages[0].packageName).toBe('date-fns');
     // App code is surfaced as a labelled entry, not dropped.
-    const labels = compositions.flatMap(chunk => chunk.topPackages.map(pkg => pkg.packageName));
+    const labels = compositions.flatMap((chunk) => chunk.topPackages.map((pkg) => pkg.packageName));
     expect(labels).toContain('(app code)');
     // Shares within a chunk sum to ~1.
     const total = sharedSearch!.topPackages.reduce((sum, pkg) => sum + pkg.shareOfChunk, 0);
@@ -141,7 +141,7 @@ describe('getPackageCosts', () => {
     expect(costs[0].packageName).toBe('react-dom');
     expect(costs[0].totalBytes).toBe(120000);
 
-    const lodash = costs.find(entry => entry.packageName === 'lodash');
+    const lodash = costs.find((entry) => entry.packageName === 'lodash');
     expect(lodash).toBeDefined();
     // lodash lives only in route-exclusive chunks.
     expect(lodash!.exclusiveBytes).toBe(70000);
@@ -167,7 +167,7 @@ describe('suggest_optimizations', () => {
 
     // date-fns is suggested to move out of the shared chunk.
     const moveDateFns = report.suggestions.find(
-      s => s.kind === 'move-out-of-shared-chunk' && s.packageName === 'date-fns',
+      (s) => s.kind === 'move-out-of-shared-chunk' && s.packageName === 'date-fns',
     );
     expect(moveDateFns).toBeDefined();
     expect(moveDateFns!.severity).toBe('warning');
@@ -175,7 +175,7 @@ describe('suggest_optimizations', () => {
     // Framework packages are never suggested for moving out of the shared chunk.
     expect(
       report.suggestions.some(
-        s => s.kind === 'move-out-of-shared-chunk' && s.packageName === 'react-dom',
+        (s) => s.kind === 'move-out-of-shared-chunk' && s.packageName === 'react-dom',
       ),
     ).toBe(false);
   });
@@ -187,10 +187,10 @@ describe('suggest_optimizations', () => {
     expect(report.webpackStatsUsed).toBe(false);
     expect(report.note).toContain('load_webpack_stats');
     // Without stats, no dedupe or shared-chunk suggestions are possible.
-    expect(report.suggestions.every(s => s.kind !== 'dedupe-package')).toBe(true);
-    expect(report.suggestions.every(s => s.kind !== 'move-out-of-shared-chunk')).toBe(true);
+    expect(report.suggestions.every((s) => s.kind !== 'dedupe-package')).toBe(true);
+    expect(report.suggestions.every((s) => s.kind !== 'move-out-of-shared-chunk')).toBe(true);
     // The shared-baseline audit is manifest-only and still fires.
-    expect(report.suggestions.some(s => s.kind === 'audit-shared-baseline')).toBe(true);
+    expect(report.suggestions.some((s) => s.kind === 'audit-shared-baseline')).toBe(true);
   });
 });
 
@@ -210,11 +210,20 @@ function makeRoute(path: string, totalBytes: number, exclusiveChunkBytes: number
   };
 }
 
-function makeChunk(chunkPath: string, sizeBytes: number, sharedByRoutes: string[], isShared: boolean): BuildChunk {
+function makeChunk(
+  chunkPath: string,
+  sizeBytes: number,
+  sharedByRoutes: string[],
+  isShared: boolean,
+): BuildChunk {
   return { chunkPath, sizeBytes, routeCount: sharedByRoutes.length, sharedByRoutes, isShared };
 }
 
-function makeBuild(routes: BuildRoute[], chunks: BuildChunk[], sharedChunkBytes: number): ParsedBuildStats {
+function makeBuild(
+  routes: BuildRoute[],
+  chunks: BuildChunk[],
+  sharedChunkBytes: number,
+): ParsedBuildStats {
   return {
     id: 'synthetic',
     buildDir: '/synthetic/.next',
@@ -227,14 +236,23 @@ function makeBuild(routes: BuildRoute[], chunks: BuildChunk[], sharedChunkBytes:
   };
 }
 
-function makeModules(packageName: string, count: number, sizeBytes: number, chunkId: string): WebpackModule[] {
-  return Array.from({ length: count }, (_unused, index) => ({
-    name: `./node_modules/${packageName}/m${index}.js`,
-    packageName,
-    sizeBytes,
-    chunkIds: [chunkId],
-    reasons: [],
-  } satisfies WebpackModule));
+function makeModules(
+  packageName: string,
+  count: number,
+  sizeBytes: number,
+  chunkId: string,
+): WebpackModule[] {
+  return Array.from(
+    { length: count },
+    (_unused, index) =>
+      ({
+        name: `./node_modules/${packageName}/m${index}.js`,
+        packageName,
+        sizeBytes,
+        chunkIds: [chunkId],
+        reasons: [],
+      }) satisfies WebpackModule,
+  );
 }
 
 function makeStats(modules: WebpackModule[], chunks: WebpackChunk[]): ParsedWebpackStats {
@@ -275,8 +293,8 @@ describe('suggest_optimizations generic rules', () => {
 
     const report = suggestOptimizations(build, stats);
     const importPkgs = report.suggestions
-      .filter(s => s.kind === 'optimize-package-imports')
-      .map(s => s.packageName);
+      .filter((s) => s.kind === 'optimize-package-imports')
+      .map((s) => s.packageName);
 
     expect(importPkgs).toContain('ui-kit');
     expect(importPkgs).not.toContain('core-js-pure');
@@ -290,7 +308,9 @@ describe('suggest_optimizations generic rules', () => {
       makeModules(`barrel-${index}`, 8, 1000 + index * 10, 'sc'),
     ).flat();
     const report = suggestOptimizations(build, makeStats(modules, webpackChunks), 50);
-    const importCount = report.suggestions.filter(s => s.kind === 'optimize-package-imports').length;
+    const importCount = report.suggestions.filter(
+      (s) => s.kind === 'optimize-package-imports',
+    ).length;
 
     expect(importCount).toBe(5);
   });
@@ -303,11 +323,11 @@ describe('suggest_optimizations generic rules', () => {
     const report = suggestOptimizations(build, stats);
 
     const movePkgs = report.suggestions
-      .filter(s => s.kind === 'move-out-of-shared-chunk')
-      .map(s => s.packageName);
+      .filter((s) => s.kind === 'move-out-of-shared-chunk')
+      .map((s) => s.packageName);
     const importPkgs = report.suggestions
-      .filter(s => s.kind === 'optimize-package-imports')
-      .map(s => s.packageName);
+      .filter((s) => s.kind === 'optimize-package-imports')
+      .map((s) => s.packageName);
 
     expect(movePkgs).toContain('big-shared');
     expect(importPkgs).not.toContain('big-shared');
@@ -339,14 +359,14 @@ describe('suggest_optimizations generic rules', () => {
     );
     const report = suggestOptimizations(guardBuild, stats, 50);
     const importPkgs = report.suggestions
-      .filter(s => s.kind === 'optimize-package-imports')
-      .map(s => s.packageName);
+      .filter((s) => s.kind === 'optimize-package-imports')
+      .map((s) => s.packageName);
 
     expect(importPkgs).toContain('mini-kit');
     expect(importPkgs).not.toContain('token-blob');
   });
 
-  it('uses each route\'s own shared bytes (not the global shared total) for the baseline audit', () => {
+  it("uses each route's own shared bytes (not the global shared total) for the baseline audit", () => {
     // build.sharedChunkBytes sums every shared chunk (2 MB) even though no single route loads them
     // all; the audit must instead use the median of per-route sharedChunkBytes (100 KB here), so the
     // reported figure stays bounded by a real page's weight.
@@ -359,7 +379,7 @@ describe('suggest_optimizations generic rules', () => {
     const skewedBuild = makeBuild(skewedRoutes, buildChunks, 2000000);
     const report = suggestOptimizations(skewedBuild, null);
 
-    const baseline = report.suggestions.find(s => s.kind === 'audit-shared-baseline');
+    const baseline = report.suggestions.find((s) => s.kind === 'audit-shared-baseline');
     expect(baseline).toBeDefined();
     expect(baseline!.bytes).toBe(100000);
   });
@@ -374,10 +394,10 @@ describe('suggest_optimizations generic rules', () => {
     const report = suggestOptimizations(frameworkBuild, null);
 
     const notFound = report.suggestions.find(
-      s => s.kind === 'code-split-route' && s.routePath === '/404',
+      (s) => s.kind === 'code-split-route' && s.routePath === '/404',
     );
     const products = report.suggestions.find(
-      s => s.kind === 'code-split-route' && s.routePath === '/products',
+      (s) => s.kind === 'code-split-route' && s.routePath === '/products',
     );
 
     expect(notFound).toBeDefined();
@@ -404,13 +424,11 @@ describe('chunk-file normalization is leading-slash tolerant', () => {
     ]);
 
     const shared = explainSharedChunks(build, stats);
-    expect(shared[0].topPackages.some(pkg => pkg.packageName === 'lib')).toBe(true);
+    expect(shared[0].topPackages.some((pkg) => pkg.packageName === 'lib')).toBe(true);
 
-    const lib = getPackageCosts(build, stats).find(cost => cost.packageName === 'lib');
+    const lib = getPackageCosts(build, stats).find((cost) => cost.packageName === 'lib');
     expect(lib).toBeDefined();
     expect(lib!.routeCount).toBe(2);
     expect(lib!.sharedBytes).toBe(40000);
   });
 });
-
-

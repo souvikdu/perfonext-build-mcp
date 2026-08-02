@@ -29,10 +29,12 @@ export function resolveWebpackStats(
 
 export function statsTextResult(payload: Record<string, unknown>) {
   return {
-    content: [{
-      type: 'text' as const,
-      text: JSON.stringify(payload, null, 2),
-    }],
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(payload, null, 2),
+      },
+    ],
   };
 }
 
