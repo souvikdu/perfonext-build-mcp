@@ -185,7 +185,8 @@ export interface ImportChainNode {
 export interface ImportTrace {
   moduleName: string;
   packageName: string | null;
-  sizeBytes: number;
+  /** Unminified webpack module size, not emitted on-disk chunk size. */
+  moduleSizeBytes: number;
   chunkFiles: string[];
   importChain: ImportChainNode[];
 }
@@ -208,13 +209,15 @@ export interface DuplicatePackageEntry {
 
 export interface SharedChunkPackage {
   packageName: string;
-  bytes: number;
+  /** Unminified webpack module size, not emitted on-disk chunk size. */
+  moduleSizeBytes: number;
   shareOfChunk: number;
 }
 
 export interface SharedChunkComposition {
   chunkPath: string;
-  sizeBytes: number;
+  /** On-disk emitted chunk size from the Next.js manifest. */
+  emittedSizeBytes: number;
   routeCount: number;
   sharedByRoutes: string[];
   topPackages: SharedChunkPackage[];

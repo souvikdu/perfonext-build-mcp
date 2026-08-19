@@ -622,7 +622,11 @@ export function suggestOptimizations(
           continue;
         }
 
-        const severity = severityForBytes(pkg.bytes, OPT_CRITICAL_BYTES, OPT_WARNING_BYTES);
+        const severity = severityForBytes(
+          pkg.moduleSizeBytes,
+          OPT_CRITICAL_BYTES,
+          OPT_WARNING_BYTES,
+        );
         if (severity === 'info') {
           continue;
         }
@@ -632,8 +636,8 @@ export function suggestOptimizations(
           kind: 'move-out-of-shared-chunk',
           severity,
           title: `Move ${pkg.packageName} out of the shared bundle`,
-          bytes: pkg.bytes,
-          evidence: `${pkg.packageName} adds ${formatBytes(pkg.bytes)} (${formatPct(pkg.shareOfChunk)}) to ${chunk.chunkPath}, which is loaded by ${chunk.routeCount} routes.`,
+          bytes: pkg.moduleSizeBytes,
+          evidence: `${pkg.packageName} adds ${formatBytes(pkg.moduleSizeBytes)} (${formatPct(pkg.shareOfChunk)}) to ${chunk.chunkPath}, which is loaded by ${chunk.routeCount} routes.`,
           recommendedAction:
             'Import it only where it is used (route-level or via next/dynamic) so routes that do not need it stop paying for it on initial load.',
           packageName: pkg.packageName,

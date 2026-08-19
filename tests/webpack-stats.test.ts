@@ -48,6 +48,8 @@ describe('webpack stats parser', () => {
     expect(extractPackageName('./node_modules/@acme/ui/index.js')).toBe('@acme/ui');
     expect(extractPackageName('./node_modules/outer/node_modules/inner/index.js')).toBe('inner');
     expect(extractPackageName('./src/components/Search.js')).toBeNull();
+    // Next.js vendored copies stay attributed to `next`; do not unwrap compiled/*.
+    expect(extractPackageName('./node_modules/next/dist/compiled/react-dom/index.js')).toBe('next');
   });
 });
 
@@ -59,6 +61,7 @@ describe('trace_import', () => {
     expect(result.matchCount).toBe(1);
     const trace = result.traces[0];
     expect(trace.packageName).toBe('react-dom');
+    expect(trace.moduleSizeBytes).toBeGreaterThan(0);
     expect(trace.importChain.length).toBeGreaterThanOrEqual(2);
     expect(trace.importChain[trace.importChain.length - 1].moduleName).toContain('react-dom');
     expect(trace.importChain[0].packageName).toBe('react');
@@ -120,8 +123,10 @@ describe('explain_shared_chunks', () => {
     expect(compositions.length).toBeGreaterThan(0);
     const sharedSearch = compositions.find((chunk) => chunk.chunkPath.includes('shared-search'));
     expect(sharedSearch).toBeDefined();
+    expect(sharedSearch!.emittedSizeBytes).toBeGreaterThan(0);
     // date-fns dominates the shared-search chunk.
     expect(sharedSearch!.topPackages[0].packageName).toBe('date-fns');
+    expect(sharedSearch!.topPackages[0].moduleSizeBytes).toBeGreaterThan(0);
     // App code is surfaced as a labelled entry, not dropped.
     const labels = compositions.flatMap((chunk) => chunk.topPackages.map((pkg) => pkg.packageName));
     expect(labels).toContain('(app code)');

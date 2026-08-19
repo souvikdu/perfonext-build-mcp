@@ -13,7 +13,8 @@ export function registerExplainSharedChunks(server: McpServer): void {
       title: 'Explain Shared Chunks',
       description:
         'Show which npm packages and app code dominate the shared chunks loaded by many routes, to identify ' +
-        'what bloats common bundles. Requires load_build_stats and load_webpack_stats first.',
+        'what bloats common bundles. Package sizes are unminified webpack module sizes, not emitted chunk ' +
+        'sizes. Requires load_build_stats and load_webpack_stats first.',
       inputSchema: {
         buildId: z.string().describe('Build ID returned by load_build_stats'),
         limit: z
@@ -42,14 +43,14 @@ export function registerExplainSharedChunks(server: McpServer): void {
         sharedChunkCount: compositions.length,
         sharedChunks: compositions.map((chunk) => ({
           chunkPath: chunk.chunkPath,
-          sizeBytes: chunk.sizeBytes,
-          sizeBytesText: formatBytes(chunk.sizeBytes),
+          emittedSizeBytes: chunk.emittedSizeBytes,
+          emittedSizeBytesText: formatBytes(chunk.emittedSizeBytes),
           routeCount: chunk.routeCount,
           sharedByRoutes: chunk.sharedByRoutes,
           topPackages: chunk.topPackages.map((pkg) => ({
             packageName: pkg.packageName,
-            bytes: pkg.bytes,
-            bytesText: formatBytes(pkg.bytes),
+            moduleSizeBytes: pkg.moduleSizeBytes,
+            moduleSizeBytesText: formatBytes(pkg.moduleSizeBytes),
             shareOfChunk: pkg.shareOfChunk,
             shareOfChunkText: formatPct(pkg.shareOfChunk),
           })),

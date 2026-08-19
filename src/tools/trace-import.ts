@@ -13,6 +13,7 @@ export function registerTraceImport(server: McpServer): void {
       title: 'Trace Import',
       description:
         'Explain why a module is bundled by tracing its import chain from an entry point to the module. ' +
+        'moduleSizeBytes is the unminified webpack module size, not emitted chunk size. ' +
         'Requires load_webpack_stats first.',
       inputSchema: {
         buildId: z.string().describe('Build ID returned by load_build_stats'),
@@ -49,8 +50,8 @@ export function registerTraceImport(server: McpServer): void {
         traces: result.traces.map((trace) => ({
           moduleName: trace.moduleName,
           packageName: trace.packageName,
-          sizeBytes: trace.sizeBytes,
-          sizeBytesText: formatBytes(trace.sizeBytes),
+          moduleSizeBytes: trace.moduleSizeBytes,
+          moduleSizeBytesText: formatBytes(trace.moduleSizeBytes),
           chunkFiles: trace.chunkFiles,
           importChain: trace.importChain,
         })),
