@@ -6,9 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-08-20
+
 ### Changed
 
-- Publish workflow migrated to npm trusted publishing (OIDC) with `npm publish --provenance`, removing the `NPM_TOKEN` secret. npm is upgraded to latest before publishing to support OIDC authentication.
+- `explain_shared_chunks` and `trace_import` now name module vs emitted sizes explicitly (`moduleSizeBytes`, `emittedSizeBytes`) so unminified webpack sizes are not mistaken for on-disk chunk bytes.
+- `how_to_collect_stats` now gates `StatsWriterPlugin` on `ANALYZE=true && !isServer` so client/server/edge compilations do not race the same `.next/stats.json`.
+
+### Fixed
+
+- `load_build_stats` no longer treats the synthetic App Router `/layout` key (from `app-build-manifest.json`) as a user-facing route, so `suggest_optimizations` cannot emit a false `code-split-route` for it. A genuine Pages Router page literally named `/layout` (from `build-manifest.json`) is unaffected.
 
 ## [0.4.2] - 2026-08-02
 

@@ -74,6 +74,11 @@ function shouldIncludeRoute(route: string): boolean {
   return !route.startsWith('/_');
 }
 
+// Skip the synthetic root-layout entry from the App Router manifest.
+function isSyntheticAppRouterLayout(route: string): boolean {
+  return route === '/layout';
+}
+
 function getRouteType(
   route: string,
   prerenderRoutes: Record<string, PrerenderManifestRouteRaw>,
@@ -190,7 +195,7 @@ export async function parseBuildStats(
   }
 
   for (const [route, chunkPaths] of Object.entries(appRouteMap)) {
-    if (!shouldIncludeRoute(route)) {
+    if (!shouldIncludeRoute(route) || isSyntheticAppRouterLayout(route)) {
       continue;
     }
 

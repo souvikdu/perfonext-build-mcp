@@ -4,13 +4,15 @@ import { z } from 'zod';
 type CollectionMethod = 'manual' | 'automatic';
 type CollectionScenario = 'webpack' | 'turbopack';
 
-const NEXT_CONFIG_WEBPACK_SNIPPET = `// next.config.ts — write .next/stats.json only when ANALYZE=true
+export const NEXT_CONFIG_WEBPACK_SNIPPET = `// next.config.ts — write .next/stats.json only when ANALYZE=true
 import type { NextConfig } from "next";
 import { StatsWriterPlugin } from "webpack-stats-plugin";
 
 const nextConfig: NextConfig = {
-  webpack(config) {
-    if (process.env.ANALYZE === "true") {
+  // Client/server/edge compilations race the same filename; without !isServer
+  // a later server pass can overwrite a ~14 MB client graph with a ~30 KB file.
+  webpack(config, { isServer }) {
+    if (process.env.ANALYZE === "true" && !isServer) {
       config.plugins.push(
         new StatsWriterPlugin({
           filename: "stats.json", // -> .next/stats.json
@@ -80,7 +82,8 @@ function buildAutomaticResponse(scenario: CollectionScenario): Record<string, un
       },
       {
         action: 'edit-next-config',
-        description: 'Add a webpack hook gated behind ANALYZE=true that writes .next/stats.json.',
+        description:
+          'Add a webpack hook gated behind ANALYZE=true && !isServer that writes .next/stats.json.',
         snippet: NEXT_CONFIG_WEBPACK_SNIPPET,
       },
       {

@@ -1,5 +1,9 @@
 {
   "pages": {
+    "/layout": [
+      "static/chunks/framework.js",
+      "static/chunks/main.js"
+    ],
     "/search": [
       "static/chunks/framework.js",
       "static/chunks/main.js",

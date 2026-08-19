@@ -1,0 +1,22 @@
+{
+  "polyfillFiles": [],
+  "devFiles": [],
+  "ampDevFiles": [],
+  "lowPriorityFiles": [],
+  "rootMainFiles": [
+    "static/chunks/framework.js",
+    "static/chunks/main.js"
+  ],
+  "pages": {
+    "/_app": [
+      "static/chunks/framework.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/_app.js"
+    ],
+    "/layout": [
+      "static/chunks/framework.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/layout.js"
+    ]
+  }
+}

@@ -49,6 +49,18 @@ describe('build stats parser', () => {
     const search = build.routes.find((route) => route.path === '/search');
     expect(search?.isAppRoute).toBe(true);
     expect(search?.prerenderBlockedReason).toBeNull();
+
+    // Synthetic App Router root-layout key is not a user-facing route.
+    expect(build.routes.some((route) => route.path === '/layout')).toBe(false);
+  });
+
+  it('keeps a genuine Pages Router page literally named /layout (not the App Router synthetic key)', async () => {
+    const pagesRouterFixtureDir = resolve(__dirname, 'fixtures/pages-router-layout-page/.next');
+    const build = await parseBuildStats(pagesRouterFixtureDir);
+
+    const layoutPage = build.routes.find((route) => route.path === '/layout');
+    expect(layoutPage).toBeDefined();
+    expect(layoutPage?.isAppRoute).toBe(false);
   });
 
   it('extracts build duration from captured build output', () => {
