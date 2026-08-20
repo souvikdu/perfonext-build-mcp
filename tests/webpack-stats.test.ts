@@ -13,6 +13,7 @@ import type {
 } from '../src/parser/types.js';
 import { parseBuildStats } from '../src/parser/build-stats.js';
 import {
+  checkWebpackStatsOverlap,
   explainSharedChunks,
   extractPackageName,
   findDuplicates,
@@ -435,5 +436,90 @@ describe('chunk-file normalization is leading-slash tolerant', () => {
     expect(lib).toBeDefined();
     expect(lib!.routeCount).toBe(2);
     expect(lib!.sharedBytes).toBe(40000);
+  });
+});
+
+describe('checkWebpackStatsOverlap', () => {
+  it('detects 100% overlap when chunk files match exactly', () => {
+    const build = makeBuild(
+      [makeRoute('/a', 60000, 0)],
+      [
+        makeChunk('static/chunks/c1.js', 30000, ['/a'], false),
+        makeChunk('static/chunks/c2.js', 30000, ['/a'], false),
+      ],
+      0,
+    );
+    const stats = makeStats(
+      [],
+      [
+        { id: '1', names: [], files: ['static/chunks/c1.js'], sizeBytes: 30000 },
+        { id: '2', names: [], files: ['/static/chunks/c2.js'], sizeBytes: 30000 },
+      ],
+    );
+
+    const overlap = checkWebpackStatsOverlap(build, stats);
+    expect(overlap.manifestChunkCount).toBe(2);
+    expect(overlap.matchedChunkCount).toBe(2);
+    expect(overlap.overlapRatio).toBe(1);
+    expect(overlap.isSkewed).toBe(false);
+  });
+
+  it('normalizes ./ prefixes, backslashes, and query/hash suffixes in chunk paths', () => {
+    const build = makeBuild(
+      [makeRoute('/a', 60000, 0)],
+      [
+        makeChunk('static/chunks/c1.js', 30000, ['/a'], false),
+        makeChunk('static/chunks/c2.js', 30000, ['/a'], false),
+      ],
+      0,
+    );
+    const stats = makeStats(
+      [],
+      [
+        { id: '1', names: [], files: ['./static\\chunks\\c1.js?hash=123'], sizeBytes: 30000 },
+        { id: '2', names: [], files: ['static/chunks/c2.js#tag'], sizeBytes: 30000 },
+      ],
+    );
+
+    const overlap = checkWebpackStatsOverlap(build, stats);
+    expect(overlap.matchedChunkCount).toBe(2);
+    expect(overlap.isSkewed).toBe(false);
+  });
+
+  it('detects version skew when overlap is below 50%', () => {
+    const build = makeBuild(
+      [makeRoute('/a', 100000, 0)],
+      [
+        makeChunk('static/chunks/c1.js', 25000, ['/a'], false),
+        makeChunk('static/chunks/c2.js', 25000, ['/a'], false),
+        makeChunk('static/chunks/c3.js', 25000, ['/a'], false),
+        makeChunk('static/chunks/c4.js', 25000, ['/a'], false),
+      ],
+      0,
+    );
+    // Stats only has c1.js (1 out of 4 chunks matched = 25% < 50%)
+    const stats = makeStats(
+      [],
+      [
+        { id: '1', names: [], files: ['static/chunks/c1.js'], sizeBytes: 25000 },
+        { id: 'old', names: [], files: ['static/chunks/old-stale.js'], sizeBytes: 25000 },
+      ],
+    );
+
+    const overlap = checkWebpackStatsOverlap(build, stats);
+    expect(overlap.manifestChunkCount).toBe(4);
+    expect(overlap.matchedChunkCount).toBe(1);
+    expect(overlap.overlapRatio).toBe(0.25);
+    expect(overlap.isSkewed).toBe(true);
+  });
+
+  it('handles empty manifest chunks gracefully', () => {
+    const build = makeBuild([], [], 0);
+    const stats = makeStats([], []);
+    const overlap = checkWebpackStatsOverlap(build, stats);
+    expect(overlap.manifestChunkCount).toBe(0);
+    expect(overlap.matchedChunkCount).toBe(0);
+    expect(overlap.overlapRatio).toBe(1);
+    expect(overlap.isSkewed).toBe(false);
   });
 });

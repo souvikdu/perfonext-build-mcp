@@ -68,6 +68,17 @@ describe('build stats parser', () => {
     expect(parseBuildDurationMs('Done in 840ms')).toBe(840);
     expect(parseBuildDurationMs('no duration here')).toBeNull();
   });
+
+  it('records missing chunk files that are referenced in manifests but absent on disk', async () => {
+    // Pages router layout page fixture has manifests but no physical chunk files
+    const pagesRouterFixtureDir = resolve(__dirname, 'fixtures/pages-router-layout-page/.next');
+    const build = await parseBuildStats(pagesRouterFixtureDir);
+
+    expect(build.missingChunkFiles).toBeDefined();
+    expect(build.missingChunkFiles!.length).toBeGreaterThan(0);
+    // Missing chunks should still be recorded with 0 bytes so math stays safe
+    expect(build.chunks.every((c) => c.sizeBytes === 0)).toBe(true);
+  });
 });
 
 describe('build stats analysis', () => {

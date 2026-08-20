@@ -40,13 +40,20 @@ async function readJsonIfPresent<T>(filePath: string): Promise<T | null> {
   }
 }
 
-async function getFileSizeBytes(filePath: string): Promise<number> {
+async function getFileSizeBytes(filePath: string): Promise<number | null> {
   try {
     const result = await stat(filePath);
     return result.size;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return 0;
+    const code = (error as NodeJS.ErrnoException).code;
+    if (
+      code === 'ENOENT' ||
+      code === 'EACCES' ||
+      code === 'EPERM' ||
+      code === 'EISDIR' ||
+      code === 'ENOTDIR'
+    ) {
+      return null;
     }
 
     throw error;
@@ -217,11 +224,16 @@ export async function parseBuildStats(
     }
   }
 
+  const missingChunkFiles: string[] = [];
+
   const chunkSizeEntries = await Promise.all(
     Array.from(chunkRouteMap.keys()).map(async (chunkPath) => {
       const normalized = chunkPath.replace(/^\//, '');
       const sizeBytes = await getFileSizeBytes(join(buildDir, normalized));
-      return [chunkPath, sizeBytes] as const;
+      if (sizeBytes === null) {
+        missingChunkFiles.push(chunkPath);
+      }
+      return [chunkPath, sizeBytes ?? 0] as const;
     }),
   );
 
@@ -287,5 +299,6 @@ export async function parseBuildStats(
       0,
     ),
     buildTimeMs,
+    missingChunkFiles: missingChunkFiles.length > 0 ? missingChunkFiles.sort() : undefined,
   } satisfies ParsedBuildStats;
 }

@@ -32,6 +32,7 @@ export interface ParsedBuildStats {
   totalChunkBytes: number;
   sharedChunkBytes: number;
   buildTimeMs: number | null;
+  missingChunkFiles?: string[];
 }
 
 export interface RouteSummaryEntry {
@@ -175,6 +176,13 @@ export interface ParsedWebpackStats {
   chunks: WebpackChunk[];
   moduleCount: number;
   parsedModuleCount: number;
+}
+
+export interface WebpackStatsOverlap {
+  manifestChunkCount: number;
+  matchedChunkCount: number;
+  overlapRatio: number;
+  isSkewed: boolean;
 }
 
 export interface ImportChainNode {

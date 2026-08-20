@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
-import { parseWebpackStats } from '../parser/webpack-stats.js';
+import { checkWebpackStatsOverlap, parseWebpackStats } from '../parser/webpack-stats.js';
 import { getBuildStats, storeWebpackStats } from '../store.js';
 import { statsTextResult } from './webpack-shared.js';
 
@@ -43,6 +43,22 @@ export function registerLoadWebpackStats(server: McpServer): void {
 
       storeWebpackStats(stats);
       const looksCollapsed = stats.parsedModuleCount === 0 || stats.chunks.length === 0;
+      const overlap = checkWebpackStatsOverlap(build, stats);
+
+      let warning: string | undefined;
+      if (looksCollapsed) {
+        warning =
+          'The stats file parsed but contains no usable modules/chunks. This usually means the stats ' +
+          'config collapsed the module graph (webpack groups modules once `modulesSpace` is exceeded and ' +
+          'omits chunk ids unless `ids: true`). Re-run how_to_collect_stats for the corrected config and rebuild.';
+      } else if (overlap.isSkewed) {
+        const overlapPercent = Math.round(overlap.overlapRatio * 100);
+        warning =
+          `Only ${overlap.matchedChunkCount} of ${overlap.manifestChunkCount} (${overlapPercent}%) manifest chunk file(s) ` +
+          'matched the chunk files in stats.json. This indicates stats.json may be from a different or stale build. ' +
+          'Attribution and module traces may be inaccurate. Re-run your build with ANALYZE=true to refresh stats.json.';
+      }
+
       return statsTextResult({
         buildId,
         webpackStatsLoaded: true,
@@ -50,14 +66,7 @@ export function registerLoadWebpackStats(server: McpServer): void {
         moduleCount: stats.moduleCount,
         parsedModuleCount: stats.parsedModuleCount,
         chunkCount: stats.chunks.length,
-        ...(looksCollapsed
-          ? {
-              warning:
-                'The stats file parsed but contains no usable modules/chunks. This usually means the stats ' +
-                'config collapsed the module graph (webpack groups modules once `modulesSpace` is exceeded and ' +
-                'omits chunk ids unless `ids: true`). Re-run how_to_collect_stats for the corrected config and rebuild.',
-            }
-          : {}),
+        ...(warning ? { warning } : {}),
         nextStep: looksCollapsed
           ? 'Call how_to_collect_stats again, apply the corrected stats config, rebuild, then load_webpack_stats.'
           : 'Now call suggest_optimizations for ranked, evidence-backed fixes (now enriched with this stats data). ' +
