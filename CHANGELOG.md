@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-08-20
+
+### Added
+
+- `load_build_stats` tracks and surfaces missing or unreadable chunk files in `missingChunkFiles` alongside a descriptive warning if manifest chunk files cannot be read on disk.
+- `load_webpack_stats` validates manifest chunk overlap against `stats.json` chunk files via `checkWebpackStatsOverlap`, warning if version skew is detected (< 50% chunk overlap).
+- `store.ts` adds bounded FIFO eviction capped at 20 builds (`MAX_BUILDS = 20`) evicting both build and linked webpack stats, and exports `clearBuildStats()` for testing and cleanup.
+
 ## [0.4.3] - 2026-08-20
 
 ### Changed

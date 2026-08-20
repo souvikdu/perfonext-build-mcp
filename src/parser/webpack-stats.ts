@@ -15,6 +15,7 @@ import type {
   WebpackChunk,
   WebpackModule,
   WebpackModuleReason,
+  WebpackStatsOverlap,
 } from './types.js';
 
 interface RawModule {
@@ -289,8 +290,58 @@ export function traceImport(
   } satisfies TraceImportResult;
 }
 
+export const SKEW_THRESHOLD = 0.5;
+
 function normalizeChunkFile(chunkPath: string): string {
-  return chunkPath.replace(/^\//, '');
+  return chunkPath
+    .replace(/\\/g, '/')
+    .replace(/^(\.\/|\/)+/, '')
+    .replace(/[?#].*$/, '');
+}
+
+/**
+ * Checks whether the loaded webpack stats match the manifest chunks for the build.
+ * Compares normalized chunk file paths from the manifest against the webpack chunks' files list.
+ * If the overlap ratio is below SKEW_THRESHOLD (0.5), the stats file is considered skewed (e.g. from an older build).
+ */
+export function checkWebpackStatsOverlap(
+  build: ParsedBuildStats,
+  stats: ParsedWebpackStats,
+  threshold = SKEW_THRESHOLD,
+): WebpackStatsOverlap {
+  const statsFiles = new Set<string>();
+  for (const chunk of stats.chunks) {
+    for (const file of chunk.files) {
+      statsFiles.add(normalizeChunkFile(file));
+    }
+  }
+
+  const manifestChunkPaths = build.chunks.map((chunk) => normalizeChunkFile(chunk.chunkPath));
+  const manifestChunkCount = manifestChunkPaths.length;
+
+  if (manifestChunkCount === 0) {
+    return {
+      manifestChunkCount: 0,
+      matchedChunkCount: 0,
+      overlapRatio: 1,
+      isSkewed: false,
+    };
+  }
+
+  let matchedChunkCount = 0;
+  for (const path of manifestChunkPaths) {
+    if (statsFiles.has(path)) {
+      matchedChunkCount++;
+    }
+  }
+
+  const overlapRatio = matchedChunkCount / manifestChunkCount;
+  return {
+    manifestChunkCount,
+    matchedChunkCount,
+    overlapRatio,
+    isSkewed: overlapRatio < threshold,
+  };
 }
 
 interface DuplicateAccumulator {

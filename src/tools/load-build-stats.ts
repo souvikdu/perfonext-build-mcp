@@ -30,6 +30,8 @@ export function registerLoadBuildStats(server: McpServer): void {
       storeBuildStats(build);
 
       const summary = getBuildSummary(build);
+      const missingChunkCount = build.missingChunkFiles?.length ?? 0;
+
       return {
         content: [
           {
@@ -40,6 +42,11 @@ export function registerLoadBuildStats(server: McpServer): void {
                 totalChunkBytesText: formatBytes(summary.totalChunkBytes),
                 sharedChunkBytesText: formatBytes(summary.sharedChunkBytes),
                 buildTimeText: formatMs(summary.buildTimeMs),
+                missingChunkFiles: build.missingChunkFiles,
+                warning:
+                  missingChunkCount > 0
+                    ? `${missingChunkCount} chunk file(s) referenced by the build manifest were missing or unreadable on disk (recorded as 0 bytes).`
+                    : undefined,
               },
               null,
               2,
