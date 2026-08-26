@@ -13,7 +13,9 @@ severity-ranked fix suggestions — evidence agents can reason over instead of i
 
 ## Quick Start
 
-Run directly with `npx`:
+`perfonext-build-mcp` is a standard MCP stdio server, so it works with any MCP-compatible client
+(GitHub Copilot in VS Code, Claude Desktop, Claude Code, Cursor, and others). Run it directly with
+`npx`:
 
 ```bash
 npx -y @perfonext/build-mcp
@@ -27,7 +29,9 @@ npm install -g @perfonext/build-mcp
 
 The executable command remains `perfonext-build-mcp` after installation.
 
-Add the server to VS Code in `.vscode/mcp.json` (the workspace MCP configuration file):
+### VS Code
+
+Add the server to `.vscode/mcp.json` (the workspace MCP configuration file):
 
 ```json
 {
@@ -41,9 +45,81 @@ Add the server to VS Code in `.vscode/mcp.json` (the workspace MCP configuration
 }
 ```
 
-Then reload the VS Code window and run **MCP: List Servers** to start it, or accept the trust prompt when it appears. For a locally-built checkout, point `command`/`args` at `node` and the repo's `dist/index.js` instead.
+Reload the VS Code window and run **MCP: List Servers** to start it, or accept the trust prompt when it appears.
 
-Then ask Copilot: _"Load the Next.js build in `./.next` and show me the largest routes."_
+### Claude Desktop
+
+Add the server to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "perfonext-build": {
+      "command": "npx",
+      "args": ["-y", "@perfonext/build-mcp"]
+    }
+  }
+}
+```
+
+Restart Claude Desktop to pick up the new server.
+
+### Claude Code
+
+Add the server with the CLI:
+
+```bash
+claude mcp add perfonext-build -- npx -y @perfonext/build-mcp
+```
+
+Or add it directly to `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "perfonext-build": {
+      "command": "npx",
+      "args": ["-y", "@perfonext/build-mcp"]
+    }
+  }
+}
+```
+
+### Other MCP clients
+
+Any client that supports stdio MCP servers can launch the same command/args pair:
+`command: npx`, `args: ["-y", "@perfonext/build-mcp"]`. Consult your client's docs for where its MCP
+server configuration file lives.
+
+For a locally-built checkout, point `command`/`args` at `node` and the repo's `dist/index.js` instead,
+in any of the configurations above.
+
+Then ask your assistant: _"Load the Next.js build in `./.next` and show me the largest routes."_
+
+## Troubleshooting
+
+### `spawn npx ENOENT` / `spawn node ENOENT` on macOS with nvm
+
+If the server fails to start with `spawn npx ENOENT` (or `spawn node ENOENT`), your editor/app was
+likely launched from the Dock/Finder and cannot see nvm. GUI apps on macOS do not load shell config
+(`.zshrc`/`.bashrc`), so `npx`/`node` installed via nvm are not on `PATH`. This applies to VS Code,
+Claude Desktop, and any other GUI MCP client on macOS.
+
+Fix it by giving the MCP config an absolute `npx` path and a `PATH` that includes the same Node bin
+directory (`dirname $(which npx)`):
+
+```json
+{
+  "command": "/Users/YOU/.nvm/versions/node/v<version>/bin/npx",
+  "args": ["-y", "@perfonext/build-mcp"],
+  "env": {
+    "PATH": "/Users/YOU/.nvm/versions/node/v<version>/bin:/usr/bin:/bin"
+  }
+}
+```
+
+Merge the `command`/`args`/`env` fields above into your client's server entry (e.g. under `servers`
+for VS Code or `mcpServers` for Claude Desktop/Code).
 
 ## What It Does
 
@@ -76,7 +152,7 @@ Then ask Copilot: _"Load the Next.js build in `./.next` and show me the largest 
 | `explain_shared_chunks` | Show which packages and app code dominate the shared chunks loaded by many routes                                  |
 | `suggest_optimizations` | Aggregate route, chunk, and webpack-stats evidence into severity-ranked, evidence-backed fix suggestions           |
 
-The output stays machine-readable and includes raw byte counts so Copilot can explain regressions, prioritise fixes, and suggest concrete dependency or import-level follow-up.
+The output stays machine-readable and includes raw byte counts so your MCP client can explain regressions, prioritise fixes, and suggest concrete dependency or import-level follow-up.
 
 Because Next.js content-hashes emitted filenames (`framework-<hash>.js`, and CSS files named purely by hash), `compare_builds` and `explain_growth` match chunks across builds by a hash-normalized identity. This prevents a rehashed-but-unchanged chunk from being misreported as removed-and-recreated, while still flagging genuinely new chunks.
 
@@ -116,7 +192,7 @@ If the app builds with Turbopack there is no webpack module graph, so `how_to_co
 and points back to the manifest-only tools. The attribution tools degrade gracefully with a
 breadcrumb when no stats file is loaded — it is never an error.
 
-## Example Copilot Prompts
+## Example Prompts
 
 - "Load the Next.js build in `./.next` and show me the largest routes."
 - "Which shared chunks are affecting the most routes in this build?"
