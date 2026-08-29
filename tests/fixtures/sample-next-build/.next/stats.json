@@ -2,8 +2,8 @@
   "chunks": [
     { "id": 0, "names": ["framework"], "files": ["static/chunks/framework.js"], "size": 128000 },
     { "id": 1, "names": ["main"], "files": ["static/chunks/main.js"], "size": 24000 },
-    { "id": 2, "names": ["home"], "files": ["static/chunks/home.js"], "size": 76000 },
-    { "id": 3, "names": ["dashboard"], "files": ["static/chunks/dashboard.js"], "size": 78000 },
+    { "id": 2, "names": ["home"], "files": ["static/chunks/home.js"], "size": 116000 },
+    { "id": 3, "names": ["dashboard"], "files": ["static/chunks/dashboard.js"], "size": 116500 },
     { "id": 4, "names": ["blog"], "files": ["static/chunks/blog.js"], "size": 12000 },
     { "id": 5, "names": ["shared-search"], "files": ["static/chunks/shared-search.js"], "size": 60000 }
   ],
@@ -30,7 +30,7 @@
     },
     {
       "name": "./node_modules/lodash/lodash.js",
-      "size": 70000,
+      "size": 110000,
       "chunks": [2, 3],
       "reasons": [
         { "moduleName": "./src/pages/home.js", "userRequest": "lodash" },

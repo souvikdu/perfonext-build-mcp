@@ -1,0 +1,10 @@
+{
+  "polyfillFiles": [],
+  "devFiles": [],
+  "ampDevFiles": [],
+  "lowPriorityFiles": [],
+  "rootMainFiles": ["static/chunks/main.js"],
+  "pages": {
+    "/legacy": ["static/chunks/main.js", "static/chunks/pages/legacy.js"]
+  }
+}

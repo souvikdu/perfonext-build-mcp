@@ -15,7 +15,12 @@ import type {
   SharedChunkSummaryEntry,
 } from './types.js';
 import { formatBytes, formatPct } from '../format.js';
-import { explainSharedChunks, findDuplicates, getPackageCosts } from './webpack-stats.js';
+import {
+  explainSharedChunks,
+  findDuplicates,
+  getPackageCosts,
+  getPackageEmittedBytes,
+} from './webpack-stats.js';
 
 function calculateDeltaRatio(baseline: number, current: number): number | null {
   if (baseline === 0) {
@@ -520,6 +525,9 @@ function stableSuggestionKey(suggestion: OptimizationSuggestion): string {
  * Aggregate manifest evidence (always) and webpack-stats evidence (when loaded) into
  * severity-ranked, evidence-backed recommendations tied to concrete Next.js actions. Works on
  * manifests alone; webpack stats add dedupe, shared-chunk, package-import, and cost findings.
+ *
+ * Every suggestion is sized in emitted on-disk bytes so a single threshold set and a single sort
+ * apply across all kinds; webpack's unminified module bytes are never reported here.
  */
 export function suggestOptimizations(
   build: ParsedBuildStats,
@@ -544,7 +552,7 @@ export function suggestOptimizations(
       kind: 'code-split-route',
       severity,
       title: frameworkRoute ? `Slim down ${route.path}` : `Code-split ${route.path}`,
-      bytes: route.exclusiveChunkBytes,
+      emittedBytes: route.exclusiveChunkBytes,
       evidence: `${route.path} ships ${formatBytes(route.exclusiveChunkBytes)} of route-exclusive JavaScript on initial load.`,
       recommendedAction: frameworkRoute
         ? 'This is a Next.js framework route (error/404/500 page or app shell), not a content page. Its weight comes from what it imports — keep it lean by trimming heavy or global imports (providers, layout, shared components) rather than code-splitting.'
@@ -570,7 +578,7 @@ export function suggestOptimizations(
       kind: 'audit-shared-baseline',
       severity: ratio >= SHARED_BASELINE_WARNING_RATIO ? 'warning' : 'info',
       title: 'Shared baseline dominates page weight',
-      bytes: medianRouteSharedBytes,
+      emittedBytes: medianRouteSharedBytes,
       evidence: `Shared chunks add ${formatBytes(medianRouteSharedBytes)} to a typical page — about ${formatPct(ratio)} of its ${formatBytes(medianRouteBytes)} total.`,
       recommendedAction: stats
         ? 'Run explain_shared_chunks to see which packages dominate the shared chunks, then trim or defer them.'
@@ -582,13 +590,13 @@ export function suggestOptimizations(
   }
 
   if (stats) {
+    const emittedByPackage = getPackageEmittedBytes(build, stats);
+
     // Dedupe packages emitted into more than one chunk.
     for (const duplicate of findDuplicates(stats, 50)) {
-      const severity = severityForBytes(
-        duplicate.wastedBytes,
-        OPT_CRITICAL_BYTES,
-        OPT_WARNING_BYTES,
-      );
+      const wastedEmittedBytes =
+        emittedByPackage.get(duplicate.packageName)?.duplicatedEmittedBytes ?? 0;
+      const severity = severityForBytes(wastedEmittedBytes, OPT_CRITICAL_BYTES, OPT_WARNING_BYTES);
       if (severity === 'info') {
         continue;
       }
@@ -597,8 +605,8 @@ export function suggestOptimizations(
         kind: 'dedupe-package',
         severity,
         title: `Dedupe ${duplicate.packageName}`,
-        bytes: duplicate.wastedBytes,
-        evidence: `${duplicate.packageName} is bundled into ${duplicate.chunkCount} chunks, duplicating ${formatBytes(duplicate.wastedBytes)} of code.`,
+        emittedBytes: wastedEmittedBytes,
+        evidence: `${duplicate.packageName} is bundled into ${duplicate.chunkCount} chunks, duplicating ${formatBytes(wastedEmittedBytes)} of emitted code.`,
         recommendedAction:
           'Run `npm dedupe`, align the version across dependents, or import it from a single shared module so it is emitted once.',
         packageName: duplicate.packageName,
@@ -622,11 +630,7 @@ export function suggestOptimizations(
           continue;
         }
 
-        const severity = severityForBytes(
-          pkg.moduleSizeBytes,
-          OPT_CRITICAL_BYTES,
-          OPT_WARNING_BYTES,
-        );
+        const severity = severityForBytes(pkg.emittedBytes, OPT_CRITICAL_BYTES, OPT_WARNING_BYTES);
         if (severity === 'info') {
           continue;
         }
@@ -636,8 +640,8 @@ export function suggestOptimizations(
           kind: 'move-out-of-shared-chunk',
           severity,
           title: `Move ${pkg.packageName} out of the shared bundle`,
-          bytes: pkg.moduleSizeBytes,
-          evidence: `${pkg.packageName} adds ${formatBytes(pkg.moduleSizeBytes)} (${formatPct(pkg.shareOfChunk)}) to ${chunk.chunkPath}, which is loaded by ${chunk.routeCount} routes.`,
+          emittedBytes: pkg.emittedBytes,
+          evidence: `${pkg.packageName} adds ${formatBytes(pkg.emittedBytes)} (${formatPct(pkg.shareOfChunkModuleBytes)}) to ${chunk.chunkPath}, which is loaded by ${chunk.routeCount} routes.`,
           recommendedAction:
             'Import it only where it is used (route-level or via next/dynamic) so routes that do not need it stop paying for it on initial load.',
           packageName: pkg.packageName,
@@ -664,14 +668,15 @@ export function suggestOptimizations(
         continue;
       }
 
-      const severity = severityForBytes(cost.totalBytes, OPT_CRITICAL_BYTES, OPT_WARNING_BYTES);
+      const emittedBytes = emittedByPackage.get(cost.packageName)?.emittedBytes ?? 0;
+      const severity = severityForBytes(emittedBytes, OPT_CRITICAL_BYTES, OPT_WARNING_BYTES);
       importCandidates.push({
         kind: 'optimize-package-imports',
         // Barrel optimization is a config win, not an emergency — cap at warning.
         severity: severity === 'critical' ? 'warning' : severity,
         title: `Optimize imports for ${cost.packageName}`,
-        bytes: cost.totalBytes,
-        evidence: `${cost.packageName} pulls in ${cost.moduleCount} modules (${formatBytes(cost.totalBytes)}) across ${cost.routeCount} routes; a barrel import can bundle far more than you use.`,
+        emittedBytes,
+        evidence: `${cost.packageName} pulls in ${cost.moduleCount} modules (${formatBytes(emittedBytes)} emitted) across ${cost.routeCount} routes; a barrel import can bundle far more than you use.`,
         recommendedAction: `Add "${cost.packageName}" to experimental.optimizePackageImports in next.config so Next.js only bundles the exports you import.`,
         packageName: cost.packageName,
         chunkPath: null,
@@ -682,7 +687,8 @@ export function suggestOptimizations(
     importCandidates
       .sort(
         (left, right) =>
-          right.bytes - left.bytes || left.packageName!.localeCompare(right.packageName!),
+          right.emittedBytes - left.emittedBytes ||
+          left.packageName!.localeCompare(right.packageName!),
       )
       .slice(0, OPT_IMPORTS_MAX)
       .forEach((candidate) => suggestions.push(candidate));
@@ -692,7 +698,7 @@ export function suggestOptimizations(
     .sort(
       (left, right) =>
         SEVERITY_RANK[right.severity] - SEVERITY_RANK[left.severity] ||
-        right.bytes - left.bytes ||
+        right.emittedBytes - left.emittedBytes ||
         stableSuggestionKey(left).localeCompare(stableSuggestionKey(right)),
     )
     .slice(0, limit);

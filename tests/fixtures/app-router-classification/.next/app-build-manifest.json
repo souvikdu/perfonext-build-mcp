@@ -1,0 +1,9 @@
+{
+  "pages": {
+    "/layout": ["static/chunks/app/layout.js"],
+    "/page": ["static/chunks/app/page.js"],
+    "/blog/[slug]/page": ["static/chunks/app/blog.js"],
+    "/dashboard/page": ["static/chunks/app/dashboard.js"],
+    "/news/page": ["static/chunks/app/news.js"]
+  }
+}

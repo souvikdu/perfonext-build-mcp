@@ -1,0 +1,7 @@
+{
+  "/layout": "/layout",
+  "/page": "/",
+  "/blog/[slug]/page": "/blog/[slug]",
+  "/dashboard/page": "/dashboard",
+  "/news/page": "/news"
+}

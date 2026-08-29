@@ -40,7 +40,7 @@ describe('build stats parser', () => {
     expect(dashboard?.prerenderBlockedReason).toBe('isr');
 
     const blog = build.routes.find((route) => route.path === '/blog/[slug]');
-    expect(blog?.type).toBe('dynamic');
+    expect(blog?.type).toBe('ssg');
     expect(blog?.prerenderBlockedReason).toBe('dynamic-params');
 
     const home = build.routes.find((route) => route.path === '/');
@@ -67,6 +67,44 @@ describe('build stats parser', () => {
     expect(parseBuildDurationMs('Compiled successfully in 12.3s')).toBe(12300);
     expect(parseBuildDurationMs('Done in 840ms')).toBe(840);
     expect(parseBuildDurationMs('no duration here')).toBeNull();
+  });
+
+  it('classifies App Router routes through app-path-routes-manifest.json', async () => {
+    const fixtureDir = resolve(__dirname, 'fixtures/app-router-classification/.next');
+    const build = await parseBuildStats(fixtureDir);
+    const routeBy = (path: string) => build.routes.find((route) => route.path === path);
+
+    // `/page` resolves to `/`, which is in prerender-manifest routes.
+    expect(routeBy('/page')).toMatchObject({
+      type: 'static',
+      isPrerendered: true,
+      prerenderBlockedReason: null,
+    });
+
+    expect(routeBy('/news/page')).toMatchObject({
+      type: 'isr',
+      isPrerendered: true,
+      prerenderBlockedReason: 'isr',
+    });
+
+    expect(routeBy('/blog/[slug]/page')).toMatchObject({
+      type: 'ssg',
+      isPrerendered: false,
+      prerenderBlockedReason: 'dynamic-params',
+    });
+
+    // In no manifest and App Router: rendered on demand, and getServerSideProps does not apply.
+    expect(routeBy('/dashboard/page')).toMatchObject({
+      type: 'dynamic',
+      isPrerendered: false,
+      prerenderBlockedReason: 'dynamic-rendering',
+    });
+
+    expect(routeBy('/legacy')).toMatchObject({
+      type: 'dynamic',
+      isPrerendered: false,
+      prerenderBlockedReason: 'server-side-props',
+    });
   });
 
   it('records missing chunk files that are referenced in manifests but absent on disk', async () => {

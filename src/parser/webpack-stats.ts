@@ -7,6 +7,7 @@ import type {
   ImportChainNode,
   ImportTrace,
   PackageCostEntry,
+  PackageEmittedBytes,
   ParsedBuildStats,
   ParsedWebpackStats,
   SharedChunkComposition,
@@ -482,11 +483,15 @@ export function explainSharedChunks(
     }
 
     const topPackages: SharedChunkPackage[] = Array.from(bytesByPackage.entries())
-      .map(([packageName, bytes]) => ({
-        packageName,
-        moduleSizeBytes: bytes,
-        shareOfChunk: chunkModuleBytes === 0 ? 0 : bytes / chunkModuleBytes,
-      }))
+      .map(([packageName, bytes]) => {
+        const share = chunkModuleBytes === 0 ? 0 : bytes / chunkModuleBytes;
+        return {
+          packageName,
+          moduleSizeBytes: bytes,
+          shareOfChunkModuleBytes: share,
+          emittedBytes: share * chunk.sizeBytes,
+        };
+      })
       .sort(
         (left, right) =>
           right.moduleSizeBytes - left.moduleSizeBytes ||
@@ -592,4 +597,78 @@ export function getPackageCosts(
         right.totalBytes - left.totalBytes || left.packageName.localeCompare(right.packageName),
     )
     .slice(0, limit);
+}
+
+/**
+ * Emitted bytes per module byte, for each webpack chunk. webpack module sizes are unminified
+ * source; the manifest records what was actually written to disk. Chunks with no manifest match
+ * (or no modules) are omitted rather than assumed to be 1:1.
+ */
+function getChunkEmittedRatios(
+  build: ParsedBuildStats,
+  stats: ParsedWebpackStats,
+): Map<string | number, number> {
+  const emittedByFile = new Map(
+    build.chunks.map((chunk) => [normalizeChunkFile(chunk.chunkPath), chunk.sizeBytes] as const),
+  );
+
+  const moduleBytesByChunkId = new Map<string | number, number>();
+  for (const module of stats.modules) {
+    for (const chunkId of new Set(module.chunkIds)) {
+      moduleBytesByChunkId.set(
+        chunkId,
+        (moduleBytesByChunkId.get(chunkId) ?? 0) + module.sizeBytes,
+      );
+    }
+  }
+
+  const ratios = new Map<string | number, number>();
+  for (const chunk of stats.chunks) {
+    const moduleBytes = moduleBytesByChunkId.get(chunk.id) ?? 0;
+    if (moduleBytes === 0) {
+      continue;
+    }
+
+    let emittedBytes = 0;
+    for (const file of chunk.files) {
+      emittedBytes += emittedByFile.get(normalizeChunkFile(file)) ?? 0;
+    }
+
+    if (emittedBytes > 0) {
+      ratios.set(chunk.id, emittedBytes / moduleBytes);
+    }
+  }
+
+  return ratios;
+}
+
+/**
+ * Scale each package's unminified module bytes into the emitted bytes it contributes, so package
+ * costs can be ranked against route and chunk totals on one scale. `duplicatedEmittedBytes` is
+ * what a perfect dedupe would remove: everything beyond the single largest emitted copy.
+ */
+export function getPackageEmittedBytes(
+  build: ParsedBuildStats,
+  stats: ParsedWebpackStats,
+): Map<string, PackageEmittedBytes> {
+  const ratioByChunkId = getChunkEmittedRatios(build, stats);
+  const byPackage = new Map<string, PackageEmittedBytes>();
+
+  for (const group of groupModulesByName(stats).values()) {
+    const copies = Array.from(group.chunkIds)
+      .map((chunkId) => group.sizeBytes * (ratioByChunkId.get(chunkId) ?? 0))
+      .sort((left, right) => right - left);
+
+    const emittedBytes = copies.reduce((sum, bytes) => sum + bytes, 0);
+    const entry = byPackage.get(group.packageName) ?? {
+      emittedBytes: 0,
+      duplicatedEmittedBytes: 0,
+    };
+
+    entry.emittedBytes += emittedBytes;
+    entry.duplicatedEmittedBytes += emittedBytes - (copies[0] ?? 0);
+    byPackage.set(group.packageName, entry);
+  }
+
+  return byPackage;
 }

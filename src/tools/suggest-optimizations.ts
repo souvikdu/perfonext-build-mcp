@@ -13,7 +13,8 @@ export function registerSuggestOptimizations(server: McpServer): void {
       title: 'Suggest Optimizations',
       description:
         'Aggregate route, chunk, and (when loaded) webpack-stats evidence into severity-ranked, ' +
-        'evidence-backed bundle optimizations tied to concrete Next.js actions. Works on manifests alone; ' +
+        'evidence-backed bundle optimizations tied to concrete Next.js actions. Every suggestion is ' +
+        'sized in emitted on-disk bytes. Works on manifests alone; ' +
         'load_webpack_stats first for dedupe, shared-chunk, and package-import suggestions.',
       inputSchema: {
         buildId: z.string().describe('Build ID returned by load_build_stats'),
@@ -43,8 +44,8 @@ export function registerSuggestOptimizations(server: McpServer): void {
           kind: suggestion.kind,
           severity: suggestion.severity,
           title: suggestion.title,
-          bytes: suggestion.bytes,
-          bytesText: formatBytes(suggestion.bytes),
+          emittedBytes: suggestion.emittedBytes,
+          emittedBytesText: formatBytes(suggestion.emittedBytes),
           evidence: suggestion.evidence,
           recommendedAction: suggestion.recommendedAction,
           packageName: suggestion.packageName,

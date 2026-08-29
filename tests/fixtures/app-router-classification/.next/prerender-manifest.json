@@ -1,0 +1,24 @@
+{
+  "version": 4,
+  "routes": {
+    "/": {
+      "initialRevalidateSeconds": false,
+      "srcRoute": null,
+      "dataRoute": null
+    },
+    "/news": {
+      "initialRevalidateSeconds": 60,
+      "srcRoute": null,
+      "dataRoute": null
+    }
+  },
+  "dynamicRoutes": {
+    "/blog/[slug]": {
+      "routeRegex": "^/blog/([^/]+?)(?:/)?$",
+      "dataRoute": null,
+      "fallback": null,
+      "dataRouteRegex": null
+    }
+  },
+  "preview": {}
+}
