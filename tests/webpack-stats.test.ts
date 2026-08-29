@@ -113,6 +113,44 @@ describe('find_duplicates', () => {
     // Sorted by wasted bytes desc — lodash leads.
     expect(duplicates[0].packageName).toBe('lodash');
   });
+
+  it('detects duplication when webpack emits one record per chunk for the same module', () => {
+    // Each record names a single, different chunk — the shape a per-record
+    // `chunkIds.length > 1` test can never see.
+    const jspdf = './node_modules/jspdf/dist/jspdf.es.min.js';
+    const stats = makeStats(
+      [
+        {
+          name: jspdf,
+          packageName: 'jspdf',
+          sizeBytes: 352077,
+          chunkIds: ['a'],
+          reasons: [],
+        },
+        {
+          name: jspdf,
+          packageName: 'jspdf',
+          sizeBytes: 352077,
+          chunkIds: ['b'],
+          reasons: [],
+        },
+      ],
+      [
+        { id: 'a', names: [], files: ['static/chunks/a.js'], sizeBytes: 400000 },
+        { id: 'b', names: [], files: ['static/chunks/b.js'], sizeBytes: 400000 },
+      ],
+    );
+
+    const duplicates = findDuplicates(stats);
+    const entry = duplicates.find((item) => item.packageName === 'jspdf');
+
+    expect(entry).toBeDefined();
+    expect(entry!.chunkCount).toBe(2);
+    // Size counts once per source module, so one extra copy is wasted — not two.
+    expect(entry!.wastedBytes).toBe(352077);
+    expect(entry!.totalBytes).toBe(352077);
+    expect(entry!.chunkFiles).toEqual(['static/chunks/a.js', 'static/chunks/b.js']);
+  });
 });
 
 describe('explain_shared_chunks', () => {

@@ -351,6 +351,42 @@ interface DuplicateAccumulator {
   chunkFiles: Set<string>;
 }
 
+interface SourceModuleGroup {
+  packageName: string;
+  sizeBytes: number;
+  chunkIds: Set<string | number>;
+}
+
+/**
+ * Collapse webpack's per-chunk module records into one entry per source module. webpack emits a
+ * separate record for each chunk a module is duplicated into, so duplication is only visible once
+ * records sharing a `name` are merged and their `chunks` arrays unioned.
+ */
+function groupModulesByName(stats: ParsedWebpackStats): Map<string, SourceModuleGroup> {
+  const byModuleName = new Map<string, SourceModuleGroup>();
+
+  for (const module of stats.modules) {
+    if (!module.packageName) {
+      continue;
+    }
+
+    const group = byModuleName.get(module.name) ?? {
+      packageName: module.packageName,
+      // The records describe the same source file, so size is taken once, not summed.
+      sizeBytes: module.sizeBytes,
+      chunkIds: new Set<string | number>(),
+    };
+
+    for (const chunkId of module.chunkIds) {
+      group.chunkIds.add(chunkId);
+    }
+
+    byModuleName.set(module.name, group);
+  }
+
+  return byModuleName;
+}
+
 /**
  * Rank npm packages whose code is emitted into more than one chunk. Wasted bytes are the
  * duplicated copies: `moduleBytes * (distinctChunkCount - 1)`, aggregated per package.
@@ -359,22 +395,18 @@ export function findDuplicates(stats: ParsedWebpackStats, limit = 20): Duplicate
   const chunkById = buildChunkIndex(stats);
   const byPackage = new Map<string, DuplicateAccumulator>();
 
-  for (const module of stats.modules) {
-    if (!module.packageName) {
-      continue;
-    }
-
-    const distinctChunkIds = Array.from(new Set(module.chunkIds));
-    const entry = byPackage.get(module.packageName) ?? {
+  for (const group of groupModulesByName(stats).values()) {
+    const distinctChunkIds = Array.from(group.chunkIds);
+    const entry = byPackage.get(group.packageName) ?? {
       wastedBytes: 0,
       totalBytes: 0,
       chunkIds: new Set<string | number>(),
       chunkFiles: new Set<string>(),
     };
 
-    entry.totalBytes += module.sizeBytes;
+    entry.totalBytes += group.sizeBytes;
     if (distinctChunkIds.length > 1) {
-      entry.wastedBytes += module.sizeBytes * (distinctChunkIds.length - 1);
+      entry.wastedBytes += group.sizeBytes * (distinctChunkIds.length - 1);
     }
 
     for (const chunkId of distinctChunkIds) {
@@ -384,7 +416,7 @@ export function findDuplicates(stats: ParsedWebpackStats, limit = 20): Duplicate
       }
     }
 
-    byPackage.set(module.packageName, entry);
+    byPackage.set(group.packageName, entry);
   }
 
   return Array.from(byPackage.entries())
