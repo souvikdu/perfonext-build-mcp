@@ -154,6 +154,8 @@ for VS Code or `mcpServers` for Claude Desktop/Code).
 
 The output stays machine-readable and includes raw byte counts so your MCP client can explain regressions, prioritise fixes, and suggest concrete dependency or import-level follow-up.
 
+Every `suggest_optimizations` finding is sized in `emittedBytes` — actual on-disk chunk bytes — so suggestions of different kinds rank on one scale. Unminified webpack module sizes appear only where they are named as such (`moduleSizeBytes`, `shareOfChunkModuleBytes`).
+
 Because Next.js content-hashes emitted filenames (`framework-<hash>.js`, and CSS files named purely by hash), `compare_builds` and `explain_growth` match chunks across builds by a hash-normalized identity. This prevents a rehashed-but-unchanged chunk from being misreported as removed-and-recreated, while still flagging genuinely new chunks.
 
 ## Inputs
@@ -163,6 +165,7 @@ The core tools read build artifacts developers already have after running `next 
 - `.next/build-manifest.json`
 - `.next/prerender-manifest.json` when present
 - `.next/app-build-manifest.json` when present
+- `.next/app-path-routes-manifest.json` when present — maps App Router manifest keys (`/gallery/page`) to the real paths (`/gallery`) the prerender manifest is keyed by, so route `type`, `isPrerendered`, and `prerenderBlockedReason` are read from the build rather than guessed from the path
 - optional captured `next build` output text to derive build duration
 
 Import-level attribution (`trace_import`, `find_duplicates`, `explain_shared_chunks`) and the

@@ -81,53 +81,44 @@ function shouldIncludeRoute(route: string): boolean {
   return !route.startsWith('/_');
 }
 
-function getRouteType(
-  route: string,
-  prerenderRoutes: Record<string, PrerenderManifestRouteRaw>,
-  dynamicRoutes: Record<string, unknown>,
-): RouteType {
-  if (route in dynamicRoutes || route.includes('[')) {
-    return 'dynamic';
-  }
-
-  const prerenderRoute = prerenderRoutes[route];
-  if (
-    prerenderRoute &&
-    typeof prerenderRoute.initialRevalidateSeconds === 'number' &&
-    Number.isFinite(prerenderRoute.initialRevalidateSeconds) &&
-    prerenderRoute.initialRevalidateSeconds > 0
-  ) {
-    return 'isr';
-  }
-
-  return 'static';
+interface RouteClassification {
+  type: RouteType;
+  isPrerendered: boolean;
+  prerenderBlockedReason: PrerenderBlockedReason;
 }
 
-function getPrerenderBlockedReason(
-  route: string,
+/**
+ * Derive rendering mode, prerender status, and blocked reason from manifest membership alone, in
+ * one place so the three fields cannot disagree. `realPath` must be the path Next.js uses in
+ * `prerender-manifest.json` (see `app-path-routes-manifest.json`), not the build-manifest key.
+ */
+function classifyRoute(
+  realPath: string,
+  isAppRoute: boolean,
   prerenderRoutes: Record<string, PrerenderManifestRouteRaw>,
   dynamicRoutes: Record<string, unknown>,
-): PrerenderBlockedReason {
-  if (route in prerenderRoutes) {
-    const revalidate = prerenderRoutes[route].initialRevalidateSeconds;
-    if (typeof revalidate === 'number' && Number.isFinite(revalidate) && revalidate > 0) {
-      return 'isr';
-    }
-
-    return null;
+): RouteClassification {
+  const prerendered = prerenderRoutes[realPath];
+  if (prerendered) {
+    const revalidate = prerendered.initialRevalidateSeconds;
+    const isr = typeof revalidate === 'number' && Number.isFinite(revalidate) && revalidate > 0;
+    return {
+      type: isr ? 'isr' : 'static',
+      isPrerendered: true,
+      prerenderBlockedReason: isr ? 'isr' : null,
+    };
   }
 
-  // In dynamicRoutes: has getStaticPaths but some or all paths render on-demand
-  if (route in dynamicRoutes) {
-    return 'dynamic-params';
+  // Has getStaticPaths/generateStaticParams, but this path renders on demand.
+  if (realPath in dynamicRoutes) {
+    return { type: 'ssg', isPrerendered: false, prerenderBlockedReason: 'dynamic-params' };
   }
 
-  // Not prerendered at all
-  if (route.includes('[')) {
-    return 'dynamic-params';
-  }
-
-  return 'server-side-props';
+  return {
+    type: 'dynamic',
+    isPrerendered: false,
+    prerenderBlockedReason: isAppRoute ? 'dynamic-rendering' : 'server-side-props',
+  };
 }
 
 export function parseBuildDurationMs(output: string): number | null {
@@ -163,6 +154,7 @@ export async function parseBuildStats(
   const buildManifestPath = join(buildDir, 'build-manifest.json');
   const prerenderManifestPath = join(buildDir, 'prerender-manifest.json');
   const appBuildManifestPath = join(buildDir, 'app-build-manifest.json');
+  const appPathRoutesManifestPath = join(buildDir, 'app-path-routes-manifest.json');
 
   const buildManifest = await readJsonIfPresent<BuildManifestRaw>(buildManifestPath);
   if (!buildManifest) {
@@ -173,6 +165,16 @@ export async function parseBuildStats(
 
   const prerenderManifest = await readJsonIfPresent<PrerenderManifestRaw>(prerenderManifestPath);
   const appBuildManifest = await readJsonIfPresent<BuildManifestRaw>(appBuildManifestPath);
+  const appPathRoutesManifest =
+    await readJsonIfPresent<Record<string, unknown>>(appPathRoutesManifestPath);
+
+  // `/gallery/page` -> `/gallery`. Pages Router keys are already the real path.
+  const appPathRoutes: Record<string, string> = {};
+  for (const [manifestKey, realPath] of Object.entries(appPathRoutesManifest ?? {})) {
+    if (typeof realPath === 'string') {
+      appPathRoutes[manifestKey] = realPath;
+    }
+  }
 
   const pagesRouteMap = parseRouteMap(buildManifest.pages);
   const appRouteMap = parseRouteMap(appBuildManifest?.pages);
@@ -263,16 +265,23 @@ export async function parseBuildStats(
         return sum;
       }, 0);
 
+      const classification = classifyRoute(
+        appPathRoutes[route] ?? route,
+        details.isAppRoute,
+        prerenderRoutes,
+        dynamicRoutes,
+      );
+
       return {
         path: route,
-        type: getRouteType(route, prerenderRoutes, dynamicRoutes),
-        prerenderBlockedReason: getPrerenderBlockedReason(route, prerenderRoutes, dynamicRoutes),
+        type: classification.type,
+        prerenderBlockedReason: classification.prerenderBlockedReason,
         chunkPaths: details.chunkPaths,
         totalBytes,
         initialLoadBytes: totalBytes,
         sharedChunkBytes,
         exclusiveChunkBytes: totalBytes - sharedChunkBytes,
-        isPrerendered: route in prerenderRoutes,
+        isPrerendered: classification.isPrerendered,
         isAppRoute: details.isAppRoute,
       } satisfies BuildRoute;
     })

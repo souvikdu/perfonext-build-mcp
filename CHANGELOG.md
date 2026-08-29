@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-29
+
+### Changed
+
+- **Breaking:** `suggest_optimizations` renames `bytes`/`bytesText` to `emittedBytes`/`emittedBytesText`. Every suggestion is now sized in emitted on-disk bytes, so `dedupe-package`, `move-out-of-shared-chunk`, and `optimize-package-imports` are no longer ranked against route suggestions on a different (unminified webpack module) scale.
+- **Breaking:** `explain_shared_chunks` renames `shareOfChunk`/`shareOfChunkText` to `shareOfChunkModuleBytes`/`shareOfChunkModuleBytesText` — the value has always been a share of the chunk's module bytes, not of its emitted size — and adds `emittedBytes`/`emittedBytesText` per package.
+- `RouteType` gains `ssg` and `PrerenderBlockedReason` gains `dynamic-rendering`, so App Router routes are no longer described with Pages Router vocabulary.
+
+### Fixed
+
+- Route `type`, `isPrerendered`, and `prerenderBlockedReason` are now derived from `app-path-routes-manifest.json`, which maps build-manifest keys (`/gallery/page`) to the real paths (`/gallery`) that `prerender-manifest.json` is keyed by. Previously the lookup could never match for App Router routes, so every one of them reported `isPrerendered: false` with a `server-side-props` reason that does not exist in the App Router. The three fields now come from a single classifier and cannot disagree.
+
 ## [0.4.7] - 2026-08-29
 
 ### Fixed

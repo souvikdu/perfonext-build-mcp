@@ -106,7 +106,7 @@ describe('find_duplicates', () => {
 
     const lodash = duplicates.find((entry) => entry.packageName === 'lodash');
     expect(lodash).toBeDefined();
-    expect(lodash!.wastedBytes).toBe(70000);
+    expect(lodash!.wastedBytes).toBe(110000);
     expect(lodash!.chunkCount).toBe(2);
     // Single-chunk packages (react, react-dom) waste nothing and must be excluded.
     expect(duplicates.some((entry) => entry.packageName === 'react-dom')).toBe(false);
@@ -170,8 +170,14 @@ describe('explain_shared_chunks', () => {
     const labels = compositions.flatMap((chunk) => chunk.topPackages.map((pkg) => pkg.packageName));
     expect(labels).toContain('(app code)');
     // Shares within a chunk sum to ~1.
-    const total = sharedSearch!.topPackages.reduce((sum, pkg) => sum + pkg.shareOfChunk, 0);
+    const total = sharedSearch!.topPackages.reduce(
+      (sum, pkg) => sum + pkg.shareOfChunkModuleBytes,
+      0,
+    );
     expect(total).toBeCloseTo(1, 5);
+    // Emitted bytes are that share applied to the chunk's on-disk size, never module bytes.
+    const emittedTotal = sharedSearch!.topPackages.reduce((sum, pkg) => sum + pkg.emittedBytes, 0);
+    expect(emittedTotal).toBeCloseTo(sharedSearch!.emittedSizeBytes, 5);
   });
 });
 
@@ -188,7 +194,7 @@ describe('getPackageCosts', () => {
     const lodash = costs.find((entry) => entry.packageName === 'lodash');
     expect(lodash).toBeDefined();
     // lodash lives only in route-exclusive chunks.
-    expect(lodash!.exclusiveBytes).toBe(70000);
+    expect(lodash!.exclusiveBytes).toBe(110000);
     expect(lodash!.sharedBytes).toBe(0);
     expect(lodash!.chunkCount).toBe(2);
   });
@@ -222,6 +228,25 @@ describe('suggest_optimizations', () => {
         (s) => s.kind === 'move-out-of-shared-chunk' && s.packageName === 'react-dom',
       ),
     ).toBe(false);
+  });
+
+  it('sizes every suggestion in emitted bytes, never unminified module bytes', async () => {
+    const build = await parseBuildStats(fixtureBuildDir);
+    const stats = await parseWebpackStats(fixtureBuildDir, build.id);
+    const report = suggestOptimizations(build, stats, 50);
+
+    // No suggestion may exceed the build's total emitted output; module-byte figures (lodash at
+    // 110000, react-dom at 120000) would breach the smaller chunks they live in.
+    for (const suggestion of report.suggestions) {
+      expect(suggestion.emittedBytes).toBeLessThanOrEqual(build.totalChunkBytes);
+    }
+
+    const dedupeLodash = report.suggestions.find(
+      (s) => s.kind === 'dedupe-package' && s.packageName === 'lodash',
+    );
+    // lodash is 110000 module bytes duplicated across two chunks; its emitted cost is lower.
+    expect(dedupeLodash!.emittedBytes).toBeLessThan(110000);
+    expect(dedupeLodash!.evidence).toContain('emitted');
   });
 
   it('degrades to manifest-only suggestions with a breadcrumb when stats are absent', async () => {
@@ -328,6 +353,9 @@ describe('suggest_optimizations generic rules', () => {
   it('suggests optimize-package-imports only for multi-route, non-infrastructure barrels', () => {
     const stats = makeStats(
       [
+        // Dominates the shared chunk, so the small barrels below stay under the move-out threshold
+        // once their module share is expressed in emitted bytes.
+        ...makeModules('vendor-core', 1, 400000, 'sc'),
         ...makeModules('ui-kit', 8, 1000, 'sc'), // multi-route barrel, below move-out threshold → include
         ...makeModules('core-js-pure', 8, 1000, 'sc'), // multi-route polyfill → exclude
         ...makeModules('big-single', 8, 1000, 'pa'), // single-route barrel → exclude (code-split concern)
@@ -425,7 +453,7 @@ describe('suggest_optimizations generic rules', () => {
 
     const baseline = report.suggestions.find((s) => s.kind === 'audit-shared-baseline');
     expect(baseline).toBeDefined();
-    expect(baseline!.bytes).toBe(100000);
+    expect(baseline!.emittedBytes).toBe(100000);
   });
 
   it('rewords code-split advice for Next.js framework routes (no next/dynamic)', () => {

@@ -1,6 +1,7 @@
-export type RouteType = 'static' | 'dynamic' | 'isr';
+export type RouteType = 'static' | 'dynamic' | 'isr' | 'ssg';
 
-export type PrerenderBlockedReason = 'isr' | 'dynamic-params' | 'server-side-props' | null;
+export type PrerenderBlockedReason =
+  'isr' | 'dynamic-params' | 'server-side-props' | 'dynamic-rendering' | null;
 
 export interface BuildRoute {
   path: string;
@@ -219,7 +220,10 @@ export interface SharedChunkPackage {
   packageName: string;
   /** Unminified webpack module size, not emitted on-disk chunk size. */
   moduleSizeBytes: number;
-  shareOfChunk: number;
+  /** Share of the chunk's total *module* bytes, not of its emitted size. */
+  shareOfChunkModuleBytes: number;
+  /** The package's module share applied to the chunk's emitted size. */
+  emittedBytes: number;
 }
 
 export interface SharedChunkComposition {
@@ -241,6 +245,13 @@ export interface PackageCostEntry {
   routeCount: number;
 }
 
+export interface PackageEmittedBytes {
+  /** Module bytes scaled to emitted output, summed over every chunk the package lands in. */
+  emittedBytes: number;
+  /** Emitted bytes beyond the single largest copy — what a perfect dedupe would remove. */
+  duplicatedEmittedBytes: number;
+}
+
 export type OptimizationKind =
   | 'dedupe-package'
   | 'move-out-of-shared-chunk'
@@ -252,7 +263,8 @@ export interface OptimizationSuggestion {
   kind: OptimizationKind;
   severity: GrowthSeverity;
   title: string;
-  bytes: number;
+  /** Always emitted on-disk bytes, so suggestions of different kinds rank on one scale. */
+  emittedBytes: number;
   evidence: string;
   recommendedAction: string;
   packageName: string | null;
