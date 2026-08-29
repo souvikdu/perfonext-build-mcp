@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-08-29
+
+### Fixed
+
+- `find_duplicates` now groups webpack module records by source-module name before testing for duplication. webpack emits one record per chunk for the same source file, so packages duplicated across chunks were previously invisible; package byte totals are also counted once per source module instead of once per record.
+
 ## [0.4.6] - 2026-08-29
 
 ### Fixed
