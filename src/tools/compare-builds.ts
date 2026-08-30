@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
-import { formatBytes, formatMs, formatPct } from '../format.js';
+import { formatBytes, formatMs, formatPct, formatSignedBytes } from '../format.js';
 import { compareBuilds as compareLoadedBuilds } from '../parser/analysis.js';
 import { getBuildStats, listBuildStats } from '../store.js';
 
@@ -84,13 +84,13 @@ export function registerCompareBuilds(server: McpServer): void {
                 ...comparison,
                 baselineTotalChunkBytesText: formatBytes(comparison.baselineTotalChunkBytes),
                 currentTotalChunkBytesText: formatBytes(comparison.currentTotalChunkBytes),
-                totalChunkDeltaBytesText: formatBytes(Math.abs(comparison.totalChunkDeltaBytes)),
+                totalChunkDeltaBytesText: formatSignedBytes(comparison.totalChunkDeltaBytes),
                 totalChunkDeltaDirection:
                   comparison.totalChunkDeltaBytes >= 0 ? 'growth' : 'shrink',
                 totalChunkDeltaRatioText: formatNullableRatio(comparison.totalChunkDeltaRatio),
                 baselineSharedChunkBytesText: formatBytes(comparison.baselineSharedChunkBytes),
                 currentSharedChunkBytesText: formatBytes(comparison.currentSharedChunkBytes),
-                sharedChunkDeltaBytesText: formatBytes(Math.abs(comparison.sharedChunkDeltaBytes)),
+                sharedChunkDeltaBytesText: formatSignedBytes(comparison.sharedChunkDeltaBytes),
                 sharedChunkDeltaDirection:
                   comparison.sharedChunkDeltaBytes >= 0 ? 'growth' : 'shrink',
                 sharedChunkDeltaRatioText: formatNullableRatio(comparison.sharedChunkDeltaRatio),
@@ -111,7 +111,7 @@ export function registerCompareBuilds(server: McpServer): void {
                   ...route,
                   baselineBytesText: formatBytes(route.baselineBytes),
                   currentBytesText: formatBytes(route.currentBytes),
-                  deltaBytesText: formatBytes(Math.abs(route.deltaBytes)),
+                  deltaBytesText: formatSignedBytes(route.deltaBytes),
                   deltaDirection: route.deltaBytes >= 0 ? 'growth' : 'shrink',
                   deltaRatioText: formatNullableRatio(route.deltaRatio),
                 })),
@@ -119,10 +119,12 @@ export function registerCompareBuilds(server: McpServer): void {
                   ...chunk,
                   baselineBytesText: formatBytes(chunk.baselineBytes),
                   currentBytesText: formatBytes(chunk.currentBytes),
-                  deltaBytesText: formatBytes(Math.abs(chunk.deltaBytes)),
+                  deltaBytesText: formatSignedBytes(chunk.deltaBytes),
                   deltaDirection: chunk.deltaBytes >= 0 ? 'growth' : 'shrink',
                   deltaRatioText: formatNullableRatio(chunk.deltaRatio),
                 })),
+                unitsNote:
+                  'All byte counts are raw uncompressed bytes of the emitted chunk files, so they are larger than the gzipped "First Load JS" figures printed by `next build`. Route deltas share chunks with each other and do not sum to totalChunkDeltaBytes.',
               },
               null,
               2,

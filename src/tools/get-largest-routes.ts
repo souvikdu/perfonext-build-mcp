@@ -66,11 +66,12 @@ export function registerGetLargestRoutes(server: McpServer): void {
                 routes: routes.map((route) => ({
                   ...route,
                   totalBytesText: formatBytes(route.totalBytes),
-                  initialLoadBytesText: formatBytes(route.initialLoadBytes),
                   sharedChunkBytesText: formatBytes(route.sharedChunkBytes),
                   exclusiveChunkBytesText: formatBytes(route.exclusiveChunkBytes),
                   sharedRatioText: formatPct(route.sharedRatio),
                 })),
+                unitsNote:
+                  'All byte counts are raw uncompressed bytes of the emitted chunk files. They are larger than the gzipped "First Load JS" figures printed by `next build` and are not directly comparable to them.',
               },
               null,
               2,

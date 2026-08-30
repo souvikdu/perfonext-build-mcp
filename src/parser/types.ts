@@ -9,7 +9,6 @@ export interface BuildRoute {
   prerenderBlockedReason: PrerenderBlockedReason;
   chunkPaths: string[];
   totalBytes: number;
-  initialLoadBytes: number;
   sharedChunkBytes: number;
   exclusiveChunkBytes: number;
   isPrerendered: boolean;
@@ -41,7 +40,6 @@ export interface RouteSummaryEntry {
   type: RouteType;
   prerenderBlockedReason: PrerenderBlockedReason;
   totalBytes: number;
-  initialLoadBytes: number;
   sharedChunkBytes: number;
   exclusiveChunkBytes: number;
   sharedRatio: number;
