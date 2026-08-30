@@ -10,6 +10,11 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+/** Deltas keep their sign in the text so a shrink cannot be misread as growth. */
+export function formatSignedBytes(bytes: number): string {
+  return `${bytes < 0 ? '-' : '+'}${formatBytes(Math.abs(bytes))}`;
+}
+
 export function formatMs(value: number | null): string | null {
   if (value === null) {
     return null;

@@ -278,7 +278,6 @@ export async function parseBuildStats(
         prerenderBlockedReason: classification.prerenderBlockedReason,
         chunkPaths: details.chunkPaths,
         totalBytes,
-        initialLoadBytes: totalBytes,
         sharedChunkBytes,
         exclusiveChunkBytes: totalBytes - sharedChunkBytes,
         isPrerendered: classification.isPrerendered,

@@ -138,6 +138,13 @@ describe('build stats analysis', () => {
     expect(routes[0].sharedRatio).toBeGreaterThan(0);
   });
 
+  it('does not report a separate initial-load figure that merely repeats totalBytes', async () => {
+    const build = await parseBuildStats(fixtureBuildDir, fixtureBuildOutputPath);
+
+    expect(build.routes[0]).not.toHaveProperty('initialLoadBytes');
+    expect(getLargestRoutes(build, 1)[0]).not.toHaveProperty('initialLoadBytes');
+  });
+
   it('ranks shared chunks by size and route fan-out', async () => {
     const build = await parseBuildStats(fixtureBuildDir, fixtureBuildOutputPath);
     const chunks = getSharedChunks(build, 3);

@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
-import { formatBytes, formatPct } from '../format.js';
+import { formatBytes, formatPct, formatSignedBytes } from '../format.js';
 import { explainGrowth as explainBuildGrowth } from '../parser/analysis.js';
 import { getBuildStats, listBuildStats } from '../store.js';
 
@@ -90,31 +90,33 @@ export function registerExplainGrowth(server: McpServer): void {
                 ...explanation,
                 overall: {
                   ...explanation.overall,
-                  totalDeltaBytesText: formatBytes(Math.abs(explanation.overall.totalDeltaBytes)),
+                  totalDeltaBytesText: formatSignedBytes(explanation.overall.totalDeltaBytes),
                   totalDeltaDirection:
                     explanation.overall.totalDeltaBytes >= 0 ? 'growth' : 'shrink',
                   totalDeltaRatioText: formatNullableRatio(explanation.overall.totalDeltaRatio),
                 },
                 routeFindings: explanation.routeFindings.map((finding) => ({
                   ...finding,
-                  deltaBytesText: formatBytes(finding.deltaBytes),
+                  deltaBytesText: formatSignedBytes(finding.deltaBytes),
                   deltaRatioText: formatNullableRatio(finding.deltaRatio),
                   topContributingChunks: finding.topContributingChunks.map((chunk) => ({
                     ...chunk,
-                    deltaBytesText: formatBytes(chunk.deltaBytes),
+                    deltaBytesText: formatSignedBytes(chunk.deltaBytes),
                     deltaRatioText: formatNullableRatio(chunk.deltaRatio),
                   })),
                 })),
                 topGrowingChunks: explanation.topGrowingChunks.map((chunk) => ({
                   ...chunk,
-                  deltaBytesText: formatBytes(chunk.deltaBytes),
+                  deltaBytesText: formatSignedBytes(chunk.deltaBytes),
                   deltaRatioText: formatNullableRatio(chunk.deltaRatio),
                 })),
                 suggestions: explanation.suggestions.map((suggestion) => ({
                   ...suggestion,
-                  deltaBytesText: formatBytes(suggestion.deltaBytes),
+                  deltaBytesText: formatSignedBytes(suggestion.deltaBytes),
                   deltaRatioText: formatNullableRatio(suggestion.deltaRatio),
                 })),
+                overlapNote:
+                  'Routes share chunks, so routeFindings deltas overlap each other and deliberately do not sum to overall.totalDeltaBytes. Use topGrowingChunks to attribute growth without double counting, and treat all byte counts as raw uncompressed bytes rather than gzipped First Load JS.',
                 nextStep,
               },
               null,

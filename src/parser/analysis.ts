@@ -119,7 +119,6 @@ export function getLargestRoutes(build: ParsedBuildStats, limit: number): RouteS
     type: route.type,
     prerenderBlockedReason: route.prerenderBlockedReason,
     totalBytes: route.totalBytes,
-    initialLoadBytes: route.initialLoadBytes,
     sharedChunkBytes: route.sharedChunkBytes,
     exclusiveChunkBytes: route.exclusiveChunkBytes,
     sharedRatio: route.totalBytes === 0 ? 0 : route.sharedChunkBytes / route.totalBytes,

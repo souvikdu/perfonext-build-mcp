@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-30
+
+### Changed
+
+- **BREAKING: `get_largest_routes` no longer reports `initialLoadBytes`.** It was a verbatim copy of `totalBytes` under a name that implied a different, gzipped measurement, so the two fields looked like corroborating evidence when only one number existed. A `unitsNote` now states that byte counts are raw uncompressed chunk bytes, which are larger than and not comparable to the gzipped "First Load JS" column in `next build` output.
+- **Byte deltas now carry their sign.** `compare_builds` and `explain_growth` previously formatted deltas through `Math.abs`, so a 2 KB shrink and a 2 KB growth both rendered as `2.0 KB` and were distinguishable only by a separate direction field. Delta text is now `+2.0 KB` or `-2.0 KB`.
+
+### Added
+
+- `compare_builds` and `explain_growth` now explain that routes share chunks, so per-route deltas overlap and deliberately do not sum to the reported total. `explain_growth` points readers at `topGrowingChunks` for a non-overlapping breakdown.
+
 ## [0.5.0] - 2026-08-29
 
 ### Changed
