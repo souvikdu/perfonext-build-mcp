@@ -51,6 +51,10 @@ export function registerLoadWebpackStats(server: McpServer): void {
           'The stats file parsed but contains no usable modules/chunks. This usually means the stats ' +
           'config collapsed the module graph (webpack groups modules once `modulesSpace` is exceeded and ' +
           'omits chunk ids unless `ids: true`). Re-run how_to_collect_stats for the corrected config and rebuild.';
+      } else if (overlap.manifestChunkCount === 0) {
+        warning =
+          'The loaded build has no manifest chunks, so overlap with stats.json cannot be checked. ' +
+          'Pass the project .next directory (not .next/standalone) to load_build_stats first.';
       } else if (overlap.isSkewed) {
         const overlapPercent = Math.round(overlap.overlapRatio * 100);
         warning =
