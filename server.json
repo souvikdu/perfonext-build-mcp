@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.souvikdu/perfonext-build-mcp",
+  "title": "Perfonext Build MCP",
+  "description": "MCP server for Next.js build stats, chunk attribution, and bundle optimization advice.",
+  "version": "0.6.2",
+  "repository": {
+    "url": "https://github.com/souvikdu/perfonext-build-mcp",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@perfonext/build-mcp",
+      "version": "0.6.2",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

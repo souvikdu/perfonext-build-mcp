@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-09-05
+
+### Added
+
+- Add `mcpName` property (`io.github.souvikdu/perfonext-build-mcp`) to `package.json` for MCP Registry package ownership verification.
+- Add MCP Registry `server.json` metadata manifest.
+- Automate MCP Registry publication via GitHub Actions OIDC (`mcp-publisher login github-oidc`) upon release tag pushes.
+
+### Fixed
+
+- Remove extraneous self-referential dependency (`@perfonext/build-mcp: file:`) from `package.json`.
+
 ## [0.6.1] - 2026-09-03
 
 ### Fixed
