@@ -1,6 +1,7 @@
 {
   "name": "@perfonext/build-mcp",
-  "version": "0.6.1",
+  "version": "0.6.2",
+  "mcpName": "io.github.souvikdu/perfonext-build-mcp",
   "description": "MCP server for analyzing Next.js build artifacts, route bundle footprint, and shared chunks",
   "type": "module",
   "main": "dist/index.js",
@@ -50,7 +51,6 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@perfonext/build-mcp": "file:",
     "zod": "^4.4.1"
   },
   "devDependencies": {
