@@ -179,7 +179,8 @@ The manifest tools work with zero setup. To answer "why is this package bundled?
 stats file first:
 
 1. Call `how_to_collect_stats({ method: 'manual' | 'automatic' })` and apply the returned steps — it
-   adds `webpack-stats-plugin`, gates a `next.config` hook behind `ANALYZE=true && !isServer`, and rebuilds.
+   adds `webpack-stats-plugin` and `cross-env`, gates a `next.config` hook behind `ANALYZE=true && !isServer`,
+   and rebuilds with `cross-env ANALYZE=true next build --webpack`. Turbopack builds will not produce `.next/stats.json`.
 2. Call `load_build_stats({ buildDir })` to get a `buildId`.
 3. Call `load_webpack_stats({ buildId })` to parse the generated `.next/stats.json`.
 4. Call `trace_import({ buildId, moduleName })` to see the import chain that pulls a module in.

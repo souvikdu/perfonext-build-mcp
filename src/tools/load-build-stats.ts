@@ -6,6 +6,37 @@ import { getBuildSummary } from '../parser/analysis.js';
 import { parseBuildStats } from '../parser/build-stats.js';
 import { storeBuildStats } from '../store.js';
 
+const INSPECTED_MANIFESTS = [
+  'build-manifest.json',
+  'app-build-manifest.json',
+  'app-path-routes-manifest.json',
+  'prerender-manifest.json',
+] as const;
+
+export function buildEmptyManifestWarning(
+  summary: { routeCount: number; chunkCount: number },
+  missingChunkCount: number,
+): string | undefined {
+  const parts: string[] = [];
+
+  if (summary.routeCount === 0 || summary.chunkCount === 0) {
+    parts.push(
+      `Readable manifests were found but the route/chunk map is empty (routeCount: ${summary.routeCount}, chunkCount: ${summary.chunkCount}). ` +
+        'Pass the project .next directory, not .next/standalone. ' +
+        `Inspected manifests: ${INSPECTED_MANIFESTS.join(', ')}. ` +
+        'suggest_optimizations and get_shared_chunks will be empty until a project .next directory with populated manifests is loaded.',
+    );
+  }
+
+  if (missingChunkCount > 0) {
+    parts.push(
+      `${missingChunkCount} chunk file(s) referenced by the build manifest were missing or unreadable on disk (recorded as 0 bytes).`,
+    );
+  }
+
+  return parts.length > 0 ? parts.join(' ') : undefined;
+}
+
 export function registerLoadBuildStats(server: McpServer): void {
   server.registerTool(
     'load_build_stats',
@@ -16,7 +47,9 @@ export function registerLoadBuildStats(server: McpServer): void {
       inputSchema: {
         buildDir: z
           .string()
-          .describe('Absolute or relative path to the Next.js .next build directory'),
+          .describe(
+            'Absolute or relative path to the project .next build directory, not .next/standalone',
+          ),
         buildOutputPath: z
           .string()
           .optional()
@@ -31,6 +64,7 @@ export function registerLoadBuildStats(server: McpServer): void {
 
       const summary = getBuildSummary(build);
       const missingChunkCount = build.missingChunkFiles?.length ?? 0;
+      const warning = buildEmptyManifestWarning(summary, missingChunkCount);
 
       return {
         content: [
@@ -43,10 +77,7 @@ export function registerLoadBuildStats(server: McpServer): void {
                 sharedChunkBytesText: formatBytes(summary.sharedChunkBytes),
                 buildTimeText: formatMs(summary.buildTimeMs),
                 missingChunkFiles: build.missingChunkFiles,
-                warning:
-                  missingChunkCount > 0
-                    ? `${missingChunkCount} chunk file(s) referenced by the build manifest were missing or unreadable on disk (recorded as 0 bytes).`
-                    : undefined,
+                ...(warning ? { warning } : {}),
               },
               null,
               2,

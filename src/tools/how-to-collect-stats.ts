@@ -4,6 +4,13 @@ import { z } from 'zod';
 type CollectionMethod = 'manual' | 'automatic';
 type CollectionScenario = 'webpack' | 'turbopack';
 
+export const STATS_DEV_DEPENDENCIES = ['webpack-stats-plugin', 'cross-env'] as const;
+export const ANALYZE_BUILD_COMMAND = 'cross-env ANALYZE=true next build --webpack';
+export const INSTALL_DEV_DEPENDENCIES_INSTRUCTION =
+  "Install webpack-stats-plugin and cross-env as devDependencies in the Next.js app package, using this repository's existing package manager and workspace conventions.";
+export const WEBPACK_RECIPE_NOTE =
+  'This recipe requires webpack. Turbopack builds will not produce .next/stats.json.';
+
 export const NEXT_CONFIG_WEBPACK_SNIPPET = `// next.config.ts — write .next/stats.json only when ANALYZE=true
 import type { NextConfig } from "next";
 import { StatsWriterPlugin } from "webpack-stats-plugin";
@@ -38,18 +45,27 @@ const nextConfig: NextConfig = {
 
 export default nextConfig;`;
 
-function buildManualResponse(scenario: CollectionScenario): Record<string, unknown> {
+export function buildCollectStatsResponse(
+  method: CollectionMethod,
+  scenario: CollectionScenario,
+): Record<string, unknown> {
   if (scenario === 'turbopack') {
     return turbopackResponse();
   }
 
+  return method === 'manual' ? buildManualResponse() : buildAutomaticResponse();
+}
+
+function buildManualResponse(): Record<string, unknown> {
   return {
     method: 'manual',
+    note: WEBPACK_RECIPE_NOTE,
     steps: [
       {
         step: 1,
-        title: 'Add the dev dependency',
-        command: 'npm install --save-dev webpack-stats-plugin',
+        title: 'Add the dev dependencies',
+        instruction: INSTALL_DEV_DEPENDENCIES_INSTRUCTION,
+        packages: [...STATS_DEV_DEPENDENCIES],
       },
       {
         step: 2,
@@ -58,8 +74,8 @@ function buildManualResponse(scenario: CollectionScenario): Record<string, unkno
       },
       {
         step: 3,
-        title: 'Build with the flag set',
-        command: 'ANALYZE=true next build',
+        title: 'Build with webpack and the ANALYZE flag',
+        command: ANALYZE_BUILD_COMMAND,
       },
     ],
     producesFile: '.next/stats.json',
@@ -68,17 +84,15 @@ function buildManualResponse(scenario: CollectionScenario): Record<string, unkno
   };
 }
 
-function buildAutomaticResponse(scenario: CollectionScenario): Record<string, unknown> {
-  if (scenario === 'turbopack') {
-    return turbopackResponse();
-  }
-
+function buildAutomaticResponse(): Record<string, unknown> {
   return {
     method: 'automatic',
+    note: WEBPACK_RECIPE_NOTE,
     actions: [
       {
         action: 'add-dev-dependency',
-        run: 'npm install --save-dev webpack-stats-plugin',
+        packages: [...STATS_DEV_DEPENDENCIES],
+        instruction: INSTALL_DEV_DEPENDENCIES_INSTRUCTION,
       },
       {
         action: 'edit-next-config',
@@ -88,11 +102,11 @@ function buildAutomaticResponse(scenario: CollectionScenario): Record<string, un
       },
       {
         action: 'add-package-script',
-        script: { analyze: 'ANALYZE=true next build' },
+        script: { analyze: ANALYZE_BUILD_COMMAND },
       },
       {
         action: 'run-build',
-        run: 'npm run analyze',
+        run: ANALYZE_BUILD_COMMAND,
       },
       {
         action: 'verify-output',
@@ -119,6 +133,7 @@ function turbopackResponse(): Record<string, unknown> {
       'get_shared_chunks',
       'compare_builds',
       'explain_growth',
+      'suggest_optimizations',
     ],
     nextStep:
       'Rebuild with webpack to produce .next/stats.json, or continue with get_largest_routes / get_shared_chunks on the build you already loaded.',
@@ -150,10 +165,7 @@ export function registerHowToCollectStats(server: McpServer): void {
     async ({ method, scenario }) => {
       const resolvedScenario: CollectionScenario = scenario ?? 'webpack';
       const resolvedMethod: CollectionMethod = method;
-      const payload =
-        resolvedMethod === 'manual'
-          ? buildManualResponse(resolvedScenario)
-          : buildAutomaticResponse(resolvedScenario);
+      const payload = buildCollectStatsResponse(resolvedMethod, resolvedScenario);
 
       return {
         content: [

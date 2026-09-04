@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-09-03
+
+### Fixed
+
+- `how_to_collect_stats` now installs `cross-env` alongside `webpack-stats-plugin` and runs `cross-env ANALYZE=true next build --webpack`, so the recipe works on Windows and does not silently produce a Turbopack build with no `.next/stats.json`.
+- The default webpack recipe states that it requires webpack and that Turbopack builds will not produce `.next/stats.json`.
+- Turbopack guidance now lists `suggest_optimizations` among the manifest-only tools.
+- `load_build_stats` warns when manifests are readable but `routeCount` or `chunkCount` is 0, names the inspected manifests, and tells the agent to pass the project `.next` directory rather than `.next/standalone`.
+
 ## [0.6.0] - 2026-08-30
 
 ### Changed
