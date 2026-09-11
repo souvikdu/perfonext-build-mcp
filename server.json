@@ -3,7 +3,7 @@
   "name": "io.github.souvikdu/perfonext-build-mcp",
   "title": "Perfonext Build MCP",
   "description": "MCP server for Next.js build stats, chunk attribution, and bundle optimization advice.",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "repository": {
     "url": "https://github.com/souvikdu/perfonext-build-mcp",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "npm",
       "identifier": "@perfonext/build-mcp",
-      "version": "0.6.2",
+      "version": "0.6.3",
       "transport": {
         "type": "stdio"
       }

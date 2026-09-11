@@ -17,7 +17,7 @@ import { registerSuggestOptimizations } from './tools/suggest-optimizations.js';
 
 const server = new McpServer({
   name: 'perfonext-build-mcp',
-  version: '0.6.2',
+  version: '0.6.3',
 });
 
 registerLoadBuildStats(server);

@@ -5,6 +5,7 @@
 [![npm](https://img.shields.io/npm/v/@perfonext/build-mcp)](https://www.npmjs.com/package/@perfonext/build-mcp)
 [![npm downloads](https://img.shields.io/npm/dt/@perfonext/build-mcp)](https://www.npmjs.com/package/@perfonext/build-mcp)
 [![license](https://img.shields.io/npm/l/@perfonext/build-mcp)](https://www.npmjs.com/package/@perfonext/build-mcp)
+[![website](https://img.shields.io/badge/website-perfonext.github.io-3d611a)](https://perfonext.github.io/)
 
 `perfonext-build-mcp` is a Model Context Protocol (MCP) server that gives GitHub Copilot, Claude Desktop,
 Claude Code, and other MCP clients structured bundle analysis for Next.js performance work. It loads `.next`
